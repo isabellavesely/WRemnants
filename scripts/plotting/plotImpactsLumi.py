@@ -49,11 +49,10 @@ def updateImpactsDict(args, fitresult, df, lumiscale, poi='Wmass'):
         'ZmassAndWidth' 'stat' 'binByBinStat' 'Total'] '''
 
     else:
-        plot_labels = ['Total', 'Theory', 'Theory EW', 'PT Modeling', 'QCD Scale', 'PDF', 'Data Stat.', 'Luminosity']
+        plot_labels = ['Total', 'Theory', 'PDF', 'Data Stat.', 'Experiment', 'Fake (sub-experiment)', 'Luminosity']
         plot_vals = [impacts[list(labels).index('Total')], impacts[list(labels).index('theory')], \
-                    impacts[list(labels).index('theory_ew')], impacts[list(labels).index('pTModeling')], \
-                    impacts[list(labels).index('QCDscale')], impacts[list(labels).index('pdfCT18Z')], \
-                    impacts[list(labels).index('stat')], lumiVal]
+                    impacts[list(labels).index('pdfCT18Z')], impacts[list(labels).index('stat')], \
+                    impacts[list(labels).index('experiment')], impacts[list(labels).index('Fake')], lumiVal]
 
         new_row = {k: v*100 for k, v in zip(plot_labels, plot_vals)}
         df.loc[len(df)] = new_row
@@ -73,7 +72,7 @@ if __name__ == '__main__':
     if args.nuisance:
         df = pd.DataFrame(columns=[args.nuisance, 'Luminosity'])
     else:
-        df = pd.DataFrame(columns=['Total', 'Theory', 'Theory EW', 'PT Modeling', 'QCD Scale', 'PDF', 'Data Stat.', 'Luminosity'])
+        df = pd.DataFrame(columns=['Total', 'Theory', 'PDF', 'Data Stat.', 'Experiment', 'Fake (sub-experiment)', 'Luminosity'])
         # df = pd.DataFrame(columns=['Total', 'Background', 'Theory', 'PDF', 'Data stat.', 'Luminosity'])
     for i in range(len(lumiscales)):
         inputFile = inFolder + '/' + inputFiles[i]
@@ -84,13 +83,21 @@ if __name__ == '__main__':
 
     plt.figure(figsize=(8, 8))
     hep.cms.label(fontsize=20, data=False, label="Projection", com=13.6)
-    for column in df.columns:
+    colors = ['royalblue', 'darkorange', 'forestgreen', 'darkmagenta', 'crimson', 'lightpink']
+    for i, column in enumerate(df.columns):
         if column != 'Luminosity':  # Exclude the Luminosity column from plotting
-            plt.plot(df['Luminosity'], df[column], label=column, marker='o')
+            plt.plot(df['Luminosity'], df[column], label=column, marker='o', color = colors[i])
 
-    plt.xlabel("Integrated luminosity (fb$^{-1})$")
-    plt.ylabel("Uncertainty in $m_{W}$ (MeV)")
-    plt.legend()
+    plt.title("lnN: 1.02; nnpdf, with minnloScaleUnc/resumUnc.", y = 1.07, fontsize = 16)
+    plt.xlabel("Integrated luminosity (fb$^{-1})$", fontsize = 16)
+    plt.ylabel("Uncertainty in $m_{W}$ (MeV)", fontsize = 16)
+    plt.xlim(0, 2.25)
+    plt.ylim(0, 35)
+    plt.xticks(fontsize=13)
+    plt.yticks(fontsize=13)
+    plt.grid()
+
+    plt.legend(fontsize=14)
 
     plt.savefig(args.outfile)
     if args.addPDF:
