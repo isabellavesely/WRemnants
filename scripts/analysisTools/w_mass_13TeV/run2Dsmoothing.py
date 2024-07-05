@@ -526,4 +526,4 @@ if __name__ == "__main__":
     with lz4.frame.open(outfile, 'wb') as f:
         pickle.dump(resultDict, f, protocol=pickle.HIGHEST_PROTOCOL)
     logger.info(f"Output saved: {time.time()-time0}")
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

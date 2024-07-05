@@ -174,4 +174,4 @@ if __name__ == "__main__":
             for ext in ["png","pdf"]:
                 canvas.SaveAs(f"{outdir}/{canvasName}.{ext}")
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

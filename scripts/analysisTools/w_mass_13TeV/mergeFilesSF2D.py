@@ -99,4 +99,4 @@ if __name__ == "__main__":
                     
     logger.info(f"Done, closing file {outfile.GetName()}")
     outfile.Close()
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

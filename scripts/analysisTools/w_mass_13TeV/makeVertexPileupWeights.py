@@ -89,5 +89,5 @@ if __name__ == "__main__":
         infile.Close()
 
     outfile.Close()
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
     

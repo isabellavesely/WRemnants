@@ -559,5 +559,5 @@ if __name__ == "__main__":
     outfile.Close()
 
     ROOT.gErrorIgnoreLevel = savErrorLevel;
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 

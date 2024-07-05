@@ -123,7 +123,7 @@ def get_binning_fakes_pt(min_pt, max_pt):
     #edges = np.arange(min_pt,32.1,1.2)  
     #edges = np.append(edges, [e for e in [34.4, 38, 44, 56] if e<max_pt][:-1])
     #edges = np.append(edges, [max_pt])
-    #edges =  np.arange(min_pt,32,2)  
+    #edges = np.arange(min_pt,32,2)
     #edges = np.append(edges, [e for e in [32, 36, 40, 46, 56] if e<max_pt][:-1])
     #edges = np.append(edges, [max_pt])
     return edges
@@ -359,7 +359,7 @@ def common_parser(analysis_label=""):
     parser.add_argument("--noScaleToData", action="store_true", help="Do not scale the MC histograms with xsec*lumi/sum(gen weights) in the postprocessing step")
     parser.add_argument("--aggregateGroups", type=str, nargs="*", default=["Diboson", "Top"], help="Sum up histograms from members of given groups in the postprocessing step")
     parser.add_argument("--muRmuFPolVarFilePath", type=str, default=f"{data_dir}/MiNNLOmuRmuFPolVar/", help="Path where input files are stored")
-    parser.add_argument("--muRmuFPolVarFileTag", type=str, default="x0p50_y4p00_ConstrPol5Ext_Trad", choices=["x0p50_y4p00_ConstrPol5Ext_Trad"],help="Tag for input files")
+    parser.add_argument("--muRmuFPolVarFileTag", type=str, default="x0p50_y4p00_ConstrPol5ExtYdep_Trad", choices=["x0p50_y4p00_ConstrPol5ExtYdep_Trad","x0p50_y4p00_ConstrPol5Ext_Trad"],help="Tag for input files")
 
     if for_reco_highPU:
         # additional arguments specific for histmaker of reconstructed objects at high pileup (mw, mz_wlike, and mz_dilepton)

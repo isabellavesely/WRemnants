@@ -566,5 +566,5 @@ if __name__ == "__main__":
         print("Option --show-more-correlated is not yet implemented")
         pass
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 

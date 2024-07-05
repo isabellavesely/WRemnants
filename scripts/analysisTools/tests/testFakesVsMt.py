@@ -1508,4 +1508,4 @@ if __name__ == "__main__":
         print(f"Saving all FRF corrections vs eta-pt in file {outFile}")
         print()
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(mainOutputFolder, outdir_original, eoscp=args.eoscp)

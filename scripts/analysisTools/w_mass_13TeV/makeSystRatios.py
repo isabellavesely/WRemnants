@@ -492,5 +492,5 @@ if __name__ == "__main__":
                  setOnlyLineRatio=True, lineWidth=2)
         #
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
     print()

@@ -745,7 +745,8 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, xnorm=False):
         return cardTool
 
     # Below: experimental uncertainties
-    cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background", splitGroup = {"experiment": ".*"},)
+    if not lowPU: # lowPU does not include PhotonInduced as a process. skip it:
+        cardTool.addLnNSystematic("CMS_PhotonInduced", processes=["PhotonInduced"], size=2.0, group="CMS_background", splitGroup = {"experiment": ".*"},)
     if wmass:
         if args.logNormalWmunu > 0.0:
             cardTool.addLnNSystematic(f"CMS_Wmunu", processes=["Wmunu"], size=args.logNormalWmunu, group="CMS_background", splitGroup = {"experiment": ".*"})

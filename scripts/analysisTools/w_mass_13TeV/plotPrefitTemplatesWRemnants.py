@@ -356,4 +356,4 @@ if __name__ == "__main__":
                              colors=colors, legEntries=legEntries, isPseudoData=True if args.pseudodata else False,
                              ratioRange=args.ratioRange)
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

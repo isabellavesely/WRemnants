@@ -254,4 +254,4 @@ if __name__ == "__main__":
                             draw_both0_noLog1_onlyLog2=1, passCanvas=canvas,
                             nContours=args.nContours, palette=args.palette, invertPalette=args.invertPalette)
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

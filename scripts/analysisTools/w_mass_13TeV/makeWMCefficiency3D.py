@@ -272,4 +272,4 @@ if __name__ == "__main__":
     eff_triggerplus.Write()
     eff_triggerminus.Write()
     rf.Close()
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

@@ -303,11 +303,6 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
           --rebin 2 --baseName transverseMass --hists mt -p mu -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_MU
 
-      - name: lowpu w mu combine mt setup
-        run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple --binnedFakeEstimation 
-          -i $HIST_FILE_MU --baseName transverseMass --fitvar mt-charge -o $WREMNANTS_OUTDIR
-
       - name: lowpu w mu plot response matrix
         run: >-  
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/response_matrix.py 
@@ -338,28 +333,23 @@ jobs:
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/makeDataMCStackPlot.py --fakeEstimation simple --binnedFakeEstimation 
           --rebin 2 --baseName transverseMass --hists mt -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
-      - name: lowpu w e combine mt setup
-        run: >- 
-          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple --binnedFakeEstimation 
-          -i $HIST_FILE_E --baseName transverseMass --fitvar mt-charge -o $WREMNANTS_OUTDIR
-
       - name: lowpu w e plot response matrix
         run: >- 
           scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/plotting/response_matrix.py 
           --axes ptW-ptVGen --procFilters Wenu -p e -o $WEB_DIR -f $PLOT_DIR/lowPU $HIST_FILE_E
 
-      - name: aggregate combine inputs
-        run: |
-          mkdir -p $COMBINED_DIR
-          cp -p $WREMNANTS_OUTDIR/WMass_lowPU_mt_charge_mu/* $COMBINED_DIR
-          cp -p $WREMNANTS_OUTDIR/WMass_lowPU_mt_charge_e/* $COMBINED_DIR
+      - name: w mu/e combine mt setup
+        run: >-
+          scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py --fakeEstimation simple --binnedFakeEstimation
+          -i $HIST_FILE_MU $HIST_FILE_E --baseName transverseMass transverseMass --fitvar mt-charge mt-charge --hdf5 -o $COMBINED_DIR
 
       - name: lowpu combine mt fit 
-        run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ mass $COMBINED_DIR WMass_lowPU_minus_mu.txt WMass_lowPU_plus_mu.txt WMass_lowPU_minus_e.txt WMass_lowPU_plus_e.txt 
+        run: >-
+          cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ mass $COMBINED_DIR Combination_WMass_lowPU//Combination.hdf5
 
       - name: wmass combine impacts
         run: scripts/ci/run_with_singularity.sh scripts/ci/show_impacts.sh $COMBINED_DIR/fitresults_123456789.root $WEB_DIR/$PLOT_DIR/lowPU impactsW.html
-
+      
       # - name: lowpu w e combine unfolding fit 
       #   run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ unfolding $WREMNANTS_OUTDIR/WMass_lowPU_ptW/ WMass_lowPU_plus.txt WMass_lowPU_minus.txt xnorm=WMass_lowPU_inclusive_xnorm.txt
 

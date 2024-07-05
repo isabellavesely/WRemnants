@@ -572,5 +572,5 @@ if __name__ == "__main__":
             for ext in ['png', 'pdf']:
                 canvas_nuis.SaveAs("{noext}.{ext}".format(noext=outnameNoExt, ext=ext))
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 

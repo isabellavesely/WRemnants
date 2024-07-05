@@ -194,4 +194,4 @@ def getHistograms(inputfile):
                      f"QCDover{denLabel}_yieldRatio", outdir, grLeg2, legendCoords="0.6,0.48,0.9,0.64;1",
                      passCanvas=canvas1D, graphDrawStyle="pl", legEntryStyle="PL", useOriginalGraphStyle=True)
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

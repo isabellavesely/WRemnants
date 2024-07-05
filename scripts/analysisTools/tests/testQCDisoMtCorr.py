@@ -166,5 +166,5 @@ if __name__ == "__main__":
                                plotName=f"isolation_{jetLabel}", draw_both0_noLog1_onlyLog2=0,
                                ratioPadYaxisTitle="Data/pred::0.7,1.1")
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 

@@ -73,4 +73,4 @@ if __name__ == "__main__":
                             palette=args.palette, nContours=args.nContours, invertPalette=args.invertPalette,
                             passCanvas=canvas, drawOption="COLZ0")
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

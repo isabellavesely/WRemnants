@@ -287,7 +287,7 @@ class Datagroups(object):
     def loadHistsForDatagroups(self, 
         baseName, syst, procsToRead=None, label=None, nominalIfMissing=True, 
         applySelection=True, forceNonzero=False, preOpMap=None, preOpArgs={}, 
-                               scaleToNewLumi=1, lumiScaleVarianceLinearly=[], excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
+        scaleToNewLumi=1, lumiScaleVarianceLinearly=[], excludeProcs=None, forceToNominal=[], sumFakesPartial=True,
     ):
         logger.debug("Calling loadHistsForDatagroups()")
         logger.debug(f"The basename and syst is: {baseName}, {syst}")
@@ -567,7 +567,7 @@ class Datagroups(object):
         self.gen_axes_names = list(gen_axes_names) if gen_axes_names != None else self.all_gen_axes
         self.sum_gen_axes = list(sum_gen_axes) if sum_gen_axes != None else self.all_gen_axes
 
-        logger.debug(f"Gen axes are now {self.gen_axes_names}")
+        logger.debug(f"Gen axes names are now {self.gen_axes_names}")
 
     def getGenBinIndices(self, h, axesToRead=None):
         gen_bins = []

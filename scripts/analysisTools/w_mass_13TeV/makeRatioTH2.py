@@ -464,5 +464,5 @@ if __name__ == "__main__":
         print("Created file %s" % (outdir+args.outfilename))
         print("")
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
          

@@ -36,13 +36,27 @@ from scripts.analysisTools.plotUtils.utility import *
 
 def getBetterLabel(k, isWlike):
     if k == "binByBinStat":
-        label = "MC_stat" if isWlike else "MCandFakes_stat"
+        label = "MC stat" if isWlike else "MC + QCD bkg stat"
     elif k == "stat":
-        label = "data_stat"
-    # elif k == "muon_eff_stat":
-    #     label = "Total eff_stat"
-    # elif k == "muon_eff_syst":
-    #     label = "Total eff_syst"
+        label = "Data stat"
+    elif k == "muon_eff_all":
+        label = "Muon efficiency"
+    elif k == "muonCalibration":
+        label = "Muon calibration"
+    elif k == "Fake":
+        label = "QCD bkg syst"
+    elif k == "angularCoeffs":
+        label = "Angular coefficients"
+    elif k == "pTModeling":
+        label = "p_{T}^{V} modeling"
+    elif k == "theory_ew":
+        label = "EW higher orders"
+    elif k == "widthW":
+        label = "#Gamma_{W}"
+    elif k == "ZmassAndWidth":
+        label = "m_{Z} + #Gamma_{Z}"
+    elif k == "sin2thetaZ":
+        label = "sin^{2}#theta_{W}"
     elif "QCDscale" in k:
         if k == "QCDscaleWMiNNLO":
             label = "Angular coefficients W"
@@ -50,6 +64,8 @@ def getBetterLabel(k, isWlike):
             label = "Angular coefficients Z"
         else:
             label = "Angular coefficients" # "A_{i}"
+    elif all(x not in k for x in ["pdf", "CMS"]):
+        label = k.capitalize()
     else:
         label = k
     return label
@@ -116,7 +132,7 @@ if __name__ == "__main__":
     parser.add_argument('-o','--outdir',     default='./makeImpactsOnMW/',   type=str, help='output directory to save the plot (not needed with --justPrint)')
     parser.add_argument(     '--nuisgroups', default='ALL',   type=str, help='nuis groups for which you want to show the impacts (can pass comma-separated list to make all of them one after the other). Use full name, no regular expressions. By default, all are made')
     parser.add_argument('-k',  '--keepNuisgroups', default=None,   type=str, help='nuis groups for which you want to show the impacts, using regular expressions')
-    parser.add_argument('-x', '--excludeNuisgroups', default=".*eff_(stat|syst)|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*QCDscale(W|Z)|.*resum|.*(muon|ecal)Prefire|FakeRate|theory_ew_|.*pixel|theory$|experiment$|bcQuark|helicity_shower",   type=str, help='Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it')
+    parser.add_argument('-x', '--excludeNuisgroups', default=".*eff_(stat|syst)|.*AlphaS$|.*nonClosure|.*resolutionCrctn|.*scaleCrctn|.*scaleClos|.*polVar|.*QCDscale$|.*QCDscale(W|Z)|.*resum|.*(muon|ecal)Prefire|FakeRate|theory_ew_|.*pixel|theory$|experiment$|bcQuark|helicity_shower|.*widthW|.*ZmassAndWidth|.*sin2thetaZ", type=str, help='Regular expression for nuisances to be excluded (note that it wins against --keepNuisgroups since evaluated before it')
     parser.add_argument(     '--setStat',   default=-1.0, type=float, help='If positive, use this value for stat (this is before scaling to MeV) until combinetf is fixed')
     parser.add_argument(     '--postfix',     default='',   type=str, help='postfix for the output name')
     parser.add_argument(     '--canvasSize', default='800,1200', type=str, help='Pass canvas dimensions as "width,height" ')
@@ -234,7 +250,7 @@ if __name__ == "__main__":
         quit()
             
     if args.showTotal:
-        h1.GetXaxis().SetBinLabel(nbins,"total")
+        h1.GetXaxis().SetBinLabel(nbins,"Total")
         h1.SetBinContent(nbins,totalUncertainty_mW)
         if compare:
             h2.SetBinContent(nbins,totalUncertainty_mW_alt)
@@ -330,4 +346,4 @@ if __name__ == "__main__":
     outdir = createPlotDirAndCopyPhp(outdir_original, eoscp=args.eoscp)
     for ext in ["pdf", "png"]:
         c1.SaveAs(f"{outdir}/impactsOnM{smallBoson}{postfix}.{ext}")
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

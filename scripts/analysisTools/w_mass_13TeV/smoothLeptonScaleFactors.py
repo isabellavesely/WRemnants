@@ -1815,5 +1815,5 @@ if __name__ == "__main__":
         outf.seek(0)
         print(outf.read())
         
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
 

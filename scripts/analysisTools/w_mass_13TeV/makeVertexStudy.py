@@ -178,4 +178,4 @@ if __name__ == "__main__":
     drawGraphCMS([gr_vpts[wp] for wp in wps], xAxisName, f"{yAxisName}::{ymin},1.0", f"vtxEff_genBosonPt_multiWP_{postfixForCanvasName}", outdir,
                  leg_roc=wps[:], legendCoords = "0.55,0.30,0.95,0.58;1",
                  passCanvas=canvas, etabinText=f"{textForPlot}::0.18,0.15", skipLumi=True)
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

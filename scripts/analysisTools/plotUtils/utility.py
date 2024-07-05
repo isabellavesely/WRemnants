@@ -612,13 +612,13 @@ def createPlotDirAndCopyPhp(outdir, eoscp=True):
     #logger.warning(f"exiting createPlotDirAndCopyPhp: outdir = {outdir}")
     return outdir
 
-def copyOutputToEos(eosPathToCopy, eoscp=True, deleteFullTmp=True):
+def copyOutputToEos(localPath, eosPathToCopy, eoscp=True, deleteFullTmp=True):
     # this part copies the plots to eos in the path specified by eosPathToCopy
     # and then delete the local folder that was automatially created by output_tools.make_plot_dir in createPlotDirAndCopyPhp
     # unless deleteFullTmp=False, in which case the local folder is kept
     # When the output path was a local folder (without exploiting the eos mount), this function does not have to do anything
     if output_tools.is_eosuser_path(eosPathToCopy) and eoscp:
-        output_tools.copy_to_eos(eosPathToCopy, deleteFullTmp=deleteFullTmp)
+        output_tools.copy_to_eos(localPath, eosPathToCopy, deleteFullTmp=deleteFullTmp)
     else:
         pass
 

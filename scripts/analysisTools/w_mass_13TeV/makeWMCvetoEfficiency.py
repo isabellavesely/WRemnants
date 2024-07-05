@@ -265,4 +265,4 @@ if __name__ == "__main__":
     eff_vetoplus.Write()
     eff_vetominus.Write()
     rf.Close()
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

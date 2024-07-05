@@ -167,4 +167,4 @@ if __name__ == "__main__":
                              chargeLabel=chargeTag, canvas=canvas, canvasWide=cwide, canvas1D=canvas1D,
                              ratioRange=args.ratioRange, lumi=16.8, plotPostfix=muonTag)
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

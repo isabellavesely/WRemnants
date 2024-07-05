@@ -150,4 +150,4 @@ if __name__ == "__main__":
         for i in ['pdf', 'png']:
             pf = '' if not args.postfix else '_'+args.postfix
             c.SaveAs(outdir+'/corrLine{pf}_{pn}_{ch}.{i}'.format(pf=pf, i=i, pn=param, ch=args.matrix.replace("channel","")))
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

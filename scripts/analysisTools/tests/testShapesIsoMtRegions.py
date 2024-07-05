@@ -205,4 +205,4 @@ if __name__ == "__main__":
                                   drawVertLines="{a},{b}".format(a=hFakeYields.GetNbinsY(),b=hFakeYields.GetNbinsX()),
                                   textForLines=ptBinRanges, ytextOffsetFromTop=0.3, textSize=0.04, textAngle=0)
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

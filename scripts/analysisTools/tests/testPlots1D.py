@@ -173,4 +173,4 @@ if __name__ == "__main__":
                            xAxisName=args.xAxisName[ip], plotName=p, ratioPadYaxisTitle=ratioPadYaxisTitle, scaleToUnitArea=args.normUnitArea,
                            noRatioPanel="Data" not in rootHists.keys())
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)

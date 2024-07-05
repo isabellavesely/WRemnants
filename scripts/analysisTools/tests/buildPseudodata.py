@@ -171,4 +171,4 @@ if __name__ == "__main__":
     fout.Close()
     logger.info(f"Output saved in file {outname}")
 
-    copyOutputToEos(outdir_original, eoscp=args.eoscp)
+    copyOutputToEos(outdir, outdir_original, eoscp=args.eoscp)
