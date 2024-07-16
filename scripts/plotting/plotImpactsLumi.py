@@ -16,10 +16,10 @@ def parseArgs():
     parser.add_argument("-u", "--ungroup", action='store_true', help="Use ungrouped nuisances")
     parser.add_argument("-n", "--nuisance", type=str, help="Only print value for specific nuisance")
     parser.add_argument("-s", "--sort", action='store_true', help="Sort nuisances by impact")
-    parser.add_argument("--inputfolder", type=str, help="Folder with fitresults, output ROOT file from combinetf")
+    parser.add_argument("-i", "--inputfolder", type=str, help="Folder with fitresults, output ROOT file from combinetf")
     parser.add_argument("-o", "--outfile", default = 'luminosity_uncertainty_projection.png', type=str, help="name of output file")
     parser.add_argument("--addPDF", default=0, type=int, nargs="*", help="Also output in PDF if == 1")
-    parser.add_argument("-lsc", "--lumiscales", default = [1.0], type = float, nargs='+', help="Additional luminosity scales to examine (default 1.0)")
+    parser.add_argument("-lsc", "--lumiScales", default = [1.0], type = float, nargs='+', help="Additional luminosity scales to examine (default 1.0)")
     return parser.parse_args()
 
 def get_file_names(folder_path):
@@ -39,6 +39,7 @@ def updateImpactsDict(args, fitresult, df, lumiscale, poi='Wmass'):
         nuisanceImpact = impacts[list(labels).index(args.nuisance)]*100
         new_row = {args.nuisance: nuisanceImpact, 'Lumi': lumiVal}
         df.loc[len(df)] = new_row
+        
 
         '''
         Nuisance options:
@@ -49,11 +50,13 @@ def updateImpactsDict(args, fitresult, df, lumiscale, poi='Wmass'):
         'ZmassAndWidth' 'stat' 'binByBinStat' 'Total'] '''
 
     else:
-        plot_labels = ['Total', 'Theory', 'PDF', 'Data Stat.', 'Experiment', 'Fake (sub-experiment)', 'Luminosity']
+        plot_labels = ['Total', 'Theory', 'Experiment', 'PDF', 'Data Stat.', 'Luminosity']
         plot_vals = [impacts[list(labels).index('Total')], impacts[list(labels).index('theory')], \
-                    impacts[list(labels).index('pdfCT18Z')], impacts[list(labels).index('stat')], \
-                    impacts[list(labels).index('experiment')], impacts[list(labels).index('Fake')], lumiVal]
-
+                    impacts[list(labels).index('experiment')], impacts[list(labels).index('pdfNNPDF31')], \
+                    impacts[list(labels).index('stat')], \
+                     lumiVal]
+                    # otherwise, PDFNN31
+                    
         new_row = {k: v*100 for k, v in zip(plot_labels, plot_vals)}
         df.loc[len(df)] = new_row
 
@@ -64,15 +67,15 @@ def sortFileNames(inputFiles): # natural sorting for fit result files (if lumi i
 
 if __name__ == '__main__':
     args = parseArgs()
-    lumiscales = sorted(args.lumiscales)
+    lumiscales = sorted(args.lumiScales)
     inFolder = args.inputfolder
-    inputFiles = sortFileNames(get_file_names(inFolder))
+    inputFiles = sortFileNames(get_file_names(inFolder)) 
 
 
     if args.nuisance:
         df = pd.DataFrame(columns=[args.nuisance, 'Luminosity'])
     else:
-        df = pd.DataFrame(columns=['Total', 'Theory', 'PDF', 'Data Stat.', 'Experiment', 'Fake (sub-experiment)', 'Luminosity'])
+        df = pd.DataFrame(columns=['Total', 'Theory', 'Experiment', 'PDF', 'Data Stat.', 'Luminosity'])
         # df = pd.DataFrame(columns=['Total', 'Background', 'Theory', 'PDF', 'Data stat.', 'Luminosity'])
     for i in range(len(lumiscales)):
         inputFile = inFolder + '/' + inputFiles[i]
@@ -83,12 +86,12 @@ if __name__ == '__main__':
 
     plt.figure(figsize=(8, 8))
     hep.cms.label(fontsize=20, data=False, label="Projection", com=13.6)
-    colors = ['royalblue', 'darkorange', 'forestgreen', 'darkmagenta', 'crimson', 'lightpink']
+    colors = ['steelblue', 'darkorange', 'olivedrab', 'mediumpurple', 'crimson', 'lightpink']
     for i, column in enumerate(df.columns):
         if column != 'Luminosity':  # Exclude the Luminosity column from plotting
             plt.plot(df['Luminosity'], df[column], label=column, marker='o', color = colors[i])
 
-    plt.title("lnN: 1.02; nnpdf, with minnloScaleUnc/resumUnc.", y = 1.07, fontsize = 16)
+    plt.title("lnN: 1.02; nnpdf, without minnloScaleUnc/resumUnc.", y = 1.07, fontsize = 16)
     plt.xlabel("Integrated luminosity (fb$^{-1})$", fontsize = 16)
     plt.ylabel("Uncertainty in $m_{W}$ (MeV)", fontsize = 16)
     plt.xlim(0, 2.25)

@@ -530,6 +530,11 @@ class TheoryHelper(object):
         pdfInfo = theory_tools.pdf_info_map("ZmumuPostVFP", pdf)
         pdfName = pdfInfo["name"]
         scale = scale if scale != -1. else pdfInfo["inflationFactor"]
+        if "lowpu" in self.card_tool.datagroups.mode and scale != -1:
+            scale = 1
+            logger.info("In lowPU mode, and PDF scale was not set. Force scaling it to 1!")
+        # scale != -1 when scale was set manually
+        
         pdf_hist = pdfName
         pdf_corr_hist = f"scetlib_dyturbo{pdf.upper().replace('AN3LO', 'an3lo')}VarsCorr" 
         symmetrize = "quadratic"
@@ -550,7 +555,8 @@ class TheoryHelper(object):
             processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
             mirror=True if symHessian else False,
             group=pdfName,
-            splitGroup={f"{pdfName}NoAlphaS": '.*', "theory": ".*"},
+            # splitGroup={f"{pdfName}NoAlphaS": '.*', "theory": ".*"},
+            splitGroup={f"{pdfName}NoAlphaS": '.*'},
             passToFakes=self.propagate_to_fakes,
             preOpMap=operation,
             scale=pdfInfo.get("scale", 1)*scale,
@@ -573,7 +579,8 @@ class TheoryHelper(object):
                     processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
                     mirror=True,
                     group=pdfName,
-                    splitGroup={f"{pdfName}NoAlphaS": '.*', "theory": ".*"},
+                    # splitGroup={f"{pdfName}NoAlphaS": '.*', "theory": ".*"},
+                    splitGroup={f"{pdfName}NoAlphaS": '.*'},
                     passToFakes=self.propagate_to_fakes,
                     preOpMap=operation,
                     scale=pdfInfo.get("scale", 1)*scale,
@@ -582,13 +589,15 @@ class TheoryHelper(object):
                 )
 
         asRange = pdfInfo['alphasRange']
-        asname = f"{pdfName}alphaS{asRange}" if not self.as_from_corr else pdf_corr_hist.replace("Vars", "_pdfas")
+        asname = f"{pdfName}alphaS{asRange}" if not self.as_from_corr else pdf_corr_hist.replace("Vars", "_pdfas").replace(pdf.upper(), 'CT18Z')
+        # the additional 'replace' is a workaround because the scetlib correction only works for CT18Z and the normalization is already corrected in histmaker
         as_replace = [("as", "pdfAlphaS")]+[("0116", "Down"), ("0120", "Up")] if asRange == "002" else [("0117", "Down"), ("0119", "Up")]
         as_args = dict(name=asname,
             processes=['wtau_samples', 'single_v_nonsig_samples'] if self.skipFromSignal else ['single_v_samples'],
             mirror=False,
             group=pdfName,
-            splitGroup={f"{pdfName}AlphaS": '.*', "theory": ".*"},
+            # splitGroup={f"{pdfName}AlphaS": '.*', "theory": ".*"},
+            splitGroup={f"{pdfName}NoAlphaS": '.*'},
             systAxes=["vars" if self.as_from_corr else "alphasVar"],
             scale=(0.75 if asRange == "002" else 1.5)*scale,
             symmetrize=symmetrize,
