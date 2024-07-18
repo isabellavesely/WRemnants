@@ -40,7 +40,7 @@ def get_selection_edges(axis_name, upper_bound=False):
 # default abcd_variables to look for
 abcd_variables = (("mt", "passMT"), ("relIso", "passIso"), ("iso", "passIso"), ("relJetLeptonDiff", "passIso"), ("dxy", "passDxy"))
 
-def get_eigen_variations(params, cov, sign=1, force_positive=False):
+def get_parameter_eigenvectors(params, cov, sign=1, force_positive=False):
     # diagonalize and get eigenvalues and eigenvectors
     e, v = np.linalg.eigh(cov) # The column eigenvectors[:, i] is the normalized eigenvector corresponding to the eigenvalue eigenvalues[i], 
     vT = np.transpose(v, axes=(*np.arange(v.ndim-2), v.ndim-1, v.ndim-2)) # transpose v to have row eigenvectors[i, :] for easier computations
@@ -66,11 +66,12 @@ def get_eigen_variations(params, cov, sign=1, force_positive=False):
         logger.warning(f"Found {np.sum(params_var.sum(axis=-1) == 0)} variations where all coefficients are 0") 
     return params_var
 
-def make_eigen_variations(params, cov, func, x1, x2=None, force_positive=False):
-    params_up = get_eigen_variations(params, cov, sign=1, force_positive=force_positive)
+def make_eigenvector_predictons(params, cov, func, x1, x2=None, force_positive=False):
+    # return alternate values i.e. nominal+/-variation
+    params_up = get_parameter_eigenvectors(params, cov, sign=1, force_positive=force_positive)
     y_pred_up = func(x1, params_up) if x2 is None else func(x1, x2, params_up)
     y_pred_up = np.moveaxis(y_pred_up, params.ndim-1, -1) # put parameter variations last
-    params_dn = get_eigen_variations(params, cov, sign=-1, force_positive=force_positive)
+    params_dn = get_parameter_eigenvectors(params, cov, sign=-1, force_positive=force_positive)
     y_pred_dn = func(x1, params_dn) if x2 is None else func(x1, x2, params_dn)
     y_pred_dn = np.moveaxis(y_pred_dn, params.ndim-1, -1) # put parameter variations last
     return np.stack((y_pred_up, y_pred_dn), axis=-1)
@@ -423,13 +424,11 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         # set histogram in signal region
         hSignal = hist.Hist(*h[{self.name_x: self.sel_x, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
-
+        hSignal.values(flow=flow)[...] = d
         if variations_frf and self.smooth_fakerate:
-            hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
-        else:
-            hSignal.values(flow=flow)[...] = d
-            if hSignal.storage_type == hist.storage.Weight:
-                hSignal.variances(flow=flow)[...] = dvar
+            hSignal = self.get_syst_hist(hSignal, d, dvar, flow=flow)
+        elif hSignal.storage_type == hist.storage.Weight:
+            hSignal.variances(flow=flow)[...] = dvar
 
         if self.global_scalefactor != 1:
             hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
@@ -499,7 +498,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         y_smooth_orig = self.f_frf(x_smooth_orig, params)
 
         if syst_variations:
-            y_smooth_var_orig = self.make_eigen_variations_frf(params, cov, x_smooth_orig)
+            y_smooth_var_orig = self.make_eigenvector_predictons_frf(params, cov, x_smooth_orig)
         else: 
             y_smooth_var_orig = None
 
@@ -524,17 +523,17 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         else:
             return y_smooth_orig, y_smooth_var_orig
 
-    def get_syst_variations_hist(self, hNominal, values, variations, flow=True):
-        # set systematic histogram with differences between variation and syst
-        hsyst = hist.Hist(*hNominal.axes, hist.axis.Integer(0, variations.shape[-2], name="_param", overflow=False, underflow=False), common.down_up_axis, storage=hist.storage.Double())
+    def get_syst_hist(self, hNominal, values, alternate, flow=True):
+        # return systematic histogram with nominal and nominal+variation on diagonal elements for systematic axes of parameters and up/down variations
+        hsyst = hist.Hist(*hNominal.axes, hist.axis.Integer(0, alternate.shape[-2], name="_param", overflow=False, underflow=False), common.down_up_axis, storage=hist.storage.Double())
 
-        # check variations lower than 0
-        vcheck = variations < (-1*values[...,np.newaxis,np.newaxis])
-        if np.sum(vcheck) > 0:
-            logger.warning(f"Found {np.sum(vcheck)} bins with variations giving negative yields, set these to 0")
-            # variations[vcheck] = 0 
+        # check alternate lower than 0
+        # vcheck = alternate < (-1*values[...,np.newaxis,np.newaxis])
+        # if np.sum(vcheck) > 0:
+        #     logger.warning(f"Found {np.sum(vcheck)} bins with alternate giving negative yields, set these to 0")
+        #     alternate[vcheck] = 0 
 
-        hsyst.values(flow=flow)[...] = variations
+        hsyst.values(flow=flow)[...] = alternate-values[...,np.newaxis,np.newaxis]
 
         # decorrelate in fakerate axes
         axes_names = [n for n in self.fakerate_axes if not self.smooth_fakerate or n != self.smoothing_axis_name]
@@ -544,8 +543,8 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         hNominal = hh.addHists(hNominal, hsyst)
         return hNominal
 
-    def make_eigen_variations_frf(self, params, cov, x1, x2=None):
-        return make_eigen_variations(params, cov, func=self.f_frf, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
+    def make_eigenvector_predictons_frf(self, params, cov, x1, x2=None):
+        return make_eigenvector_predictons(params, cov, func=self.f_frf, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
 
     def get_bin_centers_smoothing(self, h, flow=True):
         return self.get_bin_centers(h, self.smoothing_axis_name, self.smoothing_axis_min, self.smoothing_axis_max, flow=flow)
@@ -678,12 +677,11 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         # set histogram in signal region
         axes = h[{self.name_x: self.sel_x if not self.integrate_x else hist.sum, self.name_y: self.sel_y}].axes
         hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
+        hSignal.values(flow=flow)[...] = d
         if variations_frf:
-            hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
-        else:
-            hSignal.values(flow=flow)[...] = d
-            if dvar is not None and hSignal.storage_type == hist.storage.Weight:
-                hSignal.variances(flow=flow)[...] = dvar
+            hSignal = self.get_syst_hist(hSignal, d, dvar, flow=flow)
+        elif dvar is not None and hSignal.storage_type == hist.storage.Weight:
+            hSignal.variances(flow=flow)[...] = dvar
 
         if self.global_scalefactor != 1:
             hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
@@ -763,7 +761,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         y_extrapolation = self.f_frf(x_extrapolation, params)
 
         if syst_variations:
-            y_extrapolation_var = self.make_eigen_variations_frf(params, cov, x_extrapolation)
+            y_extrapolation_var = self.make_eigenvector_predictons_frf(params, cov, x_extrapolation)
         else: 
             y_extrapolation_var = None
 
@@ -824,13 +822,11 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
 
         # set histogram in signal region
         hSignal = hist.Hist(*h[{self.name_x: self.sel_x if not self.integrate_x else hist.sum, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
-
+        hSignal.values(flow=flow)[...] = d
         if variations_frf and self.smooth_fakerate:
-            hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
-        else:
-            hSignal.values(flow=flow)[...] = d
-            if hSignal.storage_type == hist.storage.Weight:
-                hSignal.variances(flow=flow)[...] = dvar
+            hSignal = self.get_syst_hist(hSignal, d, dvar, flow=flow)
+        elif hSignal.storage_type == hist.storage.Weight:
+            hSignal.variances(flow=flow)[...] = dvar
 
         if self.global_scalefactor != 1:
             hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
@@ -1049,13 +1045,11 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         # set histogram in signal region
         axes = [a for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y]
         hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
-
+        hSignal.values(flow=flow)[...] = d
         if variations_scf or variations_frf or variations_full:
-            hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
-        else:
-            hSignal.values(flow=flow)[...] = d
-            if hSignal.storage_type == hist.storage.Weight:
-                hSignal.variances(flow=flow)[...] = dvar
+            hSignal = self.get_syst_hist(hSignal, d, dvar, flow=flow)
+        elif hSignal.storage_type == hist.storage.Weight:
+            hSignal.variances(flow=flow)[...] = dvar
 
         if self.global_scalefactor != 1:
             hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
@@ -1172,7 +1166,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 y_smooth_orig = self.f_scf(x_interpol_orig, x_smooth_orig, params)
 
                 if syst_variations:
-                    y_smooth_var_orig = self.make_eigen_variations_scf(params, cov, x_interpol_orig, x_smooth_orig)
+                    y_smooth_var_orig = self.make_eigenvector_predictons_scf(params, cov, x_interpol_orig, x_smooth_orig)
                 else: 
                     y_smooth_var_orig = None
 
@@ -1195,7 +1189,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 y_smooth_orig = self.f_scf(x_interpol_orig, params)
 
                 if syst_variations:
-                    y_smooth_var_orig = self.make_eigen_variations_scf(params, cov, x_interpol_orig)
+                    y_smooth_var_orig = self.make_eigenvector_predictons_scf(params, cov, x_interpol_orig)
                 else: 
                     y_smooth_var_orig = None
 
@@ -1242,7 +1236,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             y_smooth_orig = self.f_scf(x_smooth_orig, params)
 
             if syst_variations:
-                y_smooth_var_orig = self.make_eigen_variations_scf(params, cov, x_smooth_orig)
+                y_smooth_var_orig = self.make_eigenvector_predictons_scf(params, cov, x_smooth_orig)
             else: 
                 y_smooth_var_orig = None
 
@@ -1364,8 +1358,8 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
         return y, y_var
 
-    def make_eigen_variations_scf(self, params, cov, x1, x2=None):
-        return make_eigen_variations(params, cov, func=self.f_scf, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
+    def make_eigenvector_predictons_scf(self, params, cov, x1, x2=None):
+        return make_eigenvector_predictons(params, cov, func=self.f_scf, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
 
     def get_bin_centers_interpolation(self, h, flow=True, cap=False):
         return self.get_bin_centers(h, self.name_x, self.axis_x_min, self.axis_x_max, flow=flow, cap=cap)
