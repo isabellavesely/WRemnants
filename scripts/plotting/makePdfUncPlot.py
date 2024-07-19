@@ -125,7 +125,7 @@ for dataset in args.datasets:
         #     alphaHists = input_tools.read_all_and_scale(args.infile, args.datasets, alphaNames)
         #     alphaHists_hel = []
         #     for alphaHist in alphaHists:
-        #         alphaHists_hel.append(theory_tools.moments_to_angular_coeffs(alphaHist.project('helicity','absYVgen','ptVgen',axis_label)))
+        #         alphaHists_hel.append(theory_tools.helicity_xsec_to_angular_coeffs(alphaHist.project('helicity','absYVgen','ptVgen',axis_label)))
         #     uncHists[ipdf].extend([alphaHists_hel[ipdf][...,0],alphaHists_hel[ipdf][...,1]])
         #     names[ipdf].extend([pdfNames[ipdf]+"alpha $\pm1\sigma$",""])
         #     colors[ipdf].extend([[cmap(i)]*2 for i in range(len(args.pdfs),2*len(args.pdfs))][0])

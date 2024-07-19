@@ -2,7 +2,7 @@ import ROOT
 import hist
 import pickle
 import lz4.frame
-from .correctionsTensor_helper import makeCorrectionsTensor
+from wremnants.correctionsTensor_helper import makeCorrectionsTensor
 from utilities import common, logging
 import numpy as np
 

@@ -681,13 +681,13 @@ def replace_by_neighbors(vals, replace):
     indices = ndimage.distance_transform_edt(replace, return_distances=False, return_indices=True)
     return vals[tuple(indices)]
 
-def moments_to_angular_coeffs(hist_moments_scales, cutoff=1e-5):
-    if hist_moments_scales.empty():
+def helicity_xsec_to_angular_coeffs(hist_helicity_xsec_scales, cutoff=1e-5):
+    if hist_helicity_xsec_scales.empty():
        raise ValueError("Cannot make coefficients from empty hist")
     # broadcasting happens right to left, so move to rightmost then move back
-    hel_ax = hist_moments_scales.axes["helicity"]
-    hel_idx = hist_moments_scales.axes.name.index("helicity")
-    vals = np.moveaxis(hist_moments_scales.view(flow=True), hel_idx, -1)
+    hel_ax = hist_helicity_xsec_scales.axes["helicity"]
+    hel_idx = hist_helicity_xsec_scales.axes.name.index("helicity")
+    vals = np.moveaxis(hist_helicity_xsec_scales.view(flow=True), hel_idx, -1)
     values = vals.value if hasattr(vals,"value") else vals
     
     # select constant term, leaving dummy axis for broadcasting
@@ -699,8 +699,11 @@ def moments_to_angular_coeffs(hist_moments_scales, cutoff=1e-5):
 
     coeffs = np.moveaxis(coeffs, -1, hel_idx)
 
-    hist_coeffs_scales = hist.Hist(*hist_moments_scales.axes, storage = hist_moments_scales._storage_type(),
-        name = "hist_coeffs_scales", data = coeffs
+    hist_coeffs_scales = hist.Hist(
+        *hist_helicity_xsec_scales.axes, 
+        storage = hist_helicity_xsec_scales._storage_type(),
+        name = "hist_coeffs_scales", 
+        data = coeffs,
     )
 
     return hist_coeffs_scales

@@ -1,6 +1,5 @@
 from utilities import differential, common, logging
 from wremnants import syst_tools, theory_tools, theory_corrections, theoryAgnostic_tools
-from wremnants import syst_tools, theory_tools, logging
 from copy import deepcopy
 import hist
 import numpy as np

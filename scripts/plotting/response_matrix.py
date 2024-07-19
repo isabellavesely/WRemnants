@@ -5,10 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import hist
 
-from wremnants import logging, common
 from wremnants import plot_tools
 from wremnants.datasets.datagroups import Datagroups
-from utilities import boostHistHelpers as hh
+from utilities import boostHistHelpers as hh, common, logging
 from utilities.io_tools import output_tools
 
 import pdb

@@ -4,7 +4,6 @@ import hist
 import narf
 import numpy as np
 import boost_histogram as bh
-from utilities import common
 from utilities import common, logging
 
 narf.clingutils.Declare('#include "vertex.h"')

@@ -1,6 +1,6 @@
 from wremnants.datasets.datagroups import Datagroups
 from wremnants import plot_tools,theory_tools,syst_tools
-from utilities import boostHistHelpers as hh,common
+from utilities import boostHistHelpers as hh, common, logging
 from utilities.styles import styles
 from utilities.io_tools import output_tools
 import matplotlib.pyplot as plt
@@ -8,7 +8,6 @@ from matplotlib import colormaps
 import argparse
 import os
 import shutil
-from wremnants import logging, common
 import pathlib
 import hist
 import re

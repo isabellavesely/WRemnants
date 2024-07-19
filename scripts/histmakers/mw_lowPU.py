@@ -15,7 +15,6 @@ isUnfolding = args.analysisMode == "unfolding"
 
 
 import narf
-import wremnants
 from wremnants import theory_tools, syst_tools, theory_corrections, muon_selections, unfolding_tools
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
@@ -58,7 +57,7 @@ axis_iso = hist.axis.Regular(50, 0, 1, underflow=False, overflow=True, name = "i
 
 axis_lin = hist.axis.Regular(5, 0, 5, name = "lin")
 
-qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity()
+qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity()
 axis_ptVgen = qcdScaleByHelicity_helper.hist.axes["ptVgen"]
 axis_chargeVgen = qcdScaleByHelicity_helper.hist.axes["chargeVgen"]
 
