@@ -395,7 +395,6 @@ def disableFlow(h, axis_name):
 
 def rebinHist(h, axis_name, edges, flow=True):
     if type(edges) == int:
-        logger.warning(f"axis_name is {axis_name} and edges to rebin are {edges}")
         return h[{axis_name : hist.rebin(edges)}]
     
     ax = h.axes[axis_name]
