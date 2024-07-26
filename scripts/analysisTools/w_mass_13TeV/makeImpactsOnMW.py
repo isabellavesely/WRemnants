@@ -147,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument(     '--legendEntries', nargs=2, type=str, help="Legend entries when comparing files", default=["Nominal", "Alternate"])
     parser.add_argument(     '--printAltVal', action='store_true', help='When comparing to a second file, also print the values for the alternative')
     parser.add_argument(     '--justPrint', action='store_true', help='Print without plotting')
+    parser.add_argument(     '--roundImpacts', default=1, type=int, help='Number of decimal digits to print impacts in the plot')
     args = parser.parse_args()
 
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
@@ -330,11 +331,11 @@ if __name__ == "__main__":
     ytex = ROOT.gPad.GetUymin() + 0.25 * step
     ytexAlt = ytex # ROOT.gPad.GetUymin() + 0.07 * step
     for i in range(1, 1 + h1.GetNbinsX()):
-        hval.GetXaxis().SetBinLabel(i, str(round(h1.GetBinContent(i), 1 if args.scaleToMeV else 3)))
+        hval.GetXaxis().SetBinLabel(i, str(round(h1.GetBinContent(i), args.roundImpacts if args.scaleToMeV else 3)))
         hval.SetBinContent(i, 0.0)
         lat.DrawLatex(xtex, ytex + step * (i-1), hval.GetXaxis().GetBinLabel(i))
         if args.printAltVal:
-            altVal = str(round(h2.GetBinContent(i), 1 if args.scaleToMeV else 3))
+            altVal = str(round(h2.GetBinContent(i), args.roundImpacts if args.scaleToMeV else 3))
             latAlt.DrawLatex(xtexAlt, ytexAlt + step * (i-1), altVal)
     hval.Draw("AXIS X+ SAME")
         

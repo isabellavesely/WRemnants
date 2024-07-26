@@ -43,7 +43,7 @@ parser.add_argument("--selection", type=str, help="Specify custom selections as 
 parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify custom selections on input histograms to integrate some axes, giving axis name and min,max (e.g. '--presel pt=ptmin,ptmax' ) or just axis name for bool axes")
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["simple", "extrapolate", "extended1D", "extended2D"])
-parser.add_argument("--binnedFakeEstimation", action='store_true', help="Compute fakerate factor (and shaperate factor) without smooting in pT (and mT)")
+parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "full"], help="Smoothing mode for fake estimate.")
 parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
 parser.add_argument("--smoothingOrderFakerate", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate ")
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
@@ -132,7 +132,7 @@ else:
 
 groups.fakerate_axes=args.fakerateAxes
 if applySelection:
-    groups.set_histselectors(datasets, args.baseName, smoothen=not args.binnedFakeEstimation, smoothingOrderFakerate=args.smoothingOrderFakerate, integrate_x=all("mt" not in x.split("-") for x in args.hists), mode=args.fakeEstimation, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
+    groups.set_histselectors(datasets, args.baseName, smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.smoothingOrderFakerate, integrate_x=all("mt" not in x.split("-") for x in args.hists), mode=args.fakeEstimation, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
 
 if not args.nominalRef:
     nominalName = args.baseName.rsplit("_", 1)[0]

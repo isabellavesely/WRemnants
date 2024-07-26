@@ -196,12 +196,12 @@ class Datagroups(object):
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
     def set_histselectors(self, 
-                          group_names, histToRead="nominal", fake_processes=None, mode="extended1D", smoothen=True, smoothingOrderFakerate=2, simultaneousABCD=False, forceGlobalScaleFakes=None, **kwargs
+                          group_names, histToRead="nominal", fake_processes=None, mode="extended1D", smoothing_mode="full", smoothingOrderFakerate=2, simultaneousABCD=False, forceGlobalScaleFakes=None, **kwargs
     ):
         logger.info(f"Set histselector")
         if self.mode[0] != "w":
             return # histselectors only implemented for single lepton (with fakes)
-        auxiliary_info={"rebin_smoothing_axis": "automatic" if smoothen else None}
+        auxiliary_info={}
         signalselector = sel.SignalSelectorABCD
         scale = 1
         if mode == "extended1D":
@@ -209,6 +209,7 @@ class Datagroups(object):
             scale = 1/1.15
         elif mode == "extended2D":
             fakeselector = sel.FakeSelector2DExtendedABCD
+            smoothen = smoothing_mode == "fakerate"
             auxiliary_info.update(dict(smooth_shapecorrection=smoothen, interpolate_x=smoothen, rebin_x="automatic" if smoothen else None))
         elif mode == "extrapolate":
             fakeselector = sel.FakeSelectorExtrapolateABCD
@@ -230,7 +231,7 @@ class Datagroups(object):
             base_member = members[0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
-                self.groups[g].histselector = fakeselector(h[{"charge": hist.sum}], global_scalefactor=scale, fakerate_axes=self.fakerate_axes, smooth_fakerate=smoothen, smoothing_order_fakerate=smoothingOrderFakerate, **auxiliary_info, **kwargs)
+                self.groups[g].histselector = fakeselector(h[{"charge": hist.sum}], global_scalefactor=scale, fakerate_axes=self.fakerate_axes, smoothing_mode=smoothing_mode, smoothing_order_fakerate=smoothingOrderFakerate, **auxiliary_info, **kwargs)
             else:
                 self.groups[g].histselector = signalselector(h[{"charge": hist.sum}], fakerate_axes=self.fakerate_axes, **kwargs)
 

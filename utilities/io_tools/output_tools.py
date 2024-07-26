@@ -100,6 +100,8 @@ def write_analysis_output(results, outfile, args):
     logger.info(f"Writing output: {time.time()-time0}")
     logger.info(f"Output saved in {outfile}")
 
+    return outfile
+
 def is_eosuser_path(path):
     if not path:
         return False

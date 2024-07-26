@@ -192,7 +192,7 @@ def get_default_mz_window():
 # following list is used in other scripts to track what steps are charge dependent
 # but assumes the corresponding efficiencies were made that way
 muonEfficiency_chargeDependentSteps = ["reco", "tracking", "idip", "trigger", "antitrigger"] # antitrigger = P(failTrig|IDIP), similar to antiiso = P(failIso|trigger)
-muonEfficiency_altBkgSyst_effSteps = ["tracking"]
+muonEfficiency_altBkgSyst_effSteps = ["reco", "tracking"]
 muonEfficiency_standaloneNumberOfValidHits = 1 # to use as "var >= this" (if this=0 the define for the cut is not used at all)
 
 
@@ -346,6 +346,7 @@ def common_parser(analysis_label=""):
     parser.add_argument("--met", type=str, choices=["DeepMETReso", "RawPFMET", "DeepMETPVRobust", "DeepMETPVRobustNoPUPPI"], help="Choice of MET", default="DeepMETPVRobust")
     parser.add_argument("-o", "--outfolder", type=str, default="", help="Output folder")
     parser.add_argument("--appendOutputFile", type=str, default="", help="Append analysis output to specified output file")
+    parser.add_argument("--sequentialEventLoops", action='store_true', help="Run event loops sequentially for each process to reduce memory usage")
     parser.add_argument("-e", "--era", type=str, choices=["2016PreVFP","2016PostVFP", "2017", "2018"], help="Data set to process", default="2016PostVFP")
     parser.add_argument("--scale_A", default=1.0, type=float, help="scaling of the uncertainty on the b-field scale parameter A")
     parser.add_argument("--scale_e", default=1.0, type=float, help="scaling of the uncertainty on the material scale parameter e")
@@ -360,6 +361,9 @@ def common_parser(analysis_label=""):
     parser.add_argument("--aggregateGroups", type=str, nargs="*", default=["Diboson", "Top"], help="Sum up histograms from members of given groups in the postprocessing step")
     parser.add_argument("--muRmuFPolVarFilePath", type=str, default=f"{data_dir}/MiNNLOmuRmuFPolVar/", help="Path where input files are stored")
     parser.add_argument("--muRmuFPolVarFileTag", type=str, default="x0p50_y4p00_ConstrPol5ExtYdep_Trad", choices=["x0p50_y4p00_ConstrPol5ExtYdep_Trad","x0p50_y4p00_ConstrPol5Ext_Trad"],help="Tag for input files")
+    parser.add_argument("--nToysMC", type=int, help="random toys for data and MC", default=-1)
+    parser.add_argument("--varianceScalingForToys", type=int, default=1, help="Scaling of variance for toys (effective mc statistics corresponds to 1./scaling)")
+    parser.add_argument("--randomSeedForToys", type=int, default=0, help="random seed for toys")
 
     if for_reco_highPU:
         # additional arguments specific for histmaker of reconstructed objects at high pileup (mw, mz_wlike, and mz_dilepton)

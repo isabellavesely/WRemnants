@@ -127,6 +127,11 @@ columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "tra
 nominal_axes = [axis_eta, axis_pt, axis_charge, *axes_abcd]
 nominal_cols = columns_fakerate
 
+if args.nToysMC > 0:
+    axis_toys = hist.axis.Integer(0, args.nToysMC, underflow=False, overflow=False, name = "toys")
+    nominal_axes = [*nominal_axes, axis_toys]
+    nominal_cols = [*nominal_cols, "toyIdxs"]
+
 # auxiliary axes
 axis_iso = hist.axis.Regular(100, 0, 25, name = "iso",underflow=False, overflow=True)
 axis_relIso = hist.axis.Regular(100, 0, 1, name = "relIso",underflow=False, overflow=True)
@@ -239,6 +244,12 @@ if not args.noRecoil:
     from wremnants import recoil_tools
     recoilHelper = recoil_tools.Recoil("highPU", args, flavor="mu")
 
+seed_data = 2*args.randomSeedForToys
+seed_mc = 2*args.randomSeedForToys + 1
+
+if args.nToysMC > 0:
+    toy_helper_data = ROOT.wrem.ToyHelper(args.nToysMC, seed_data, 1, ROOT.ROOT.GetThreadPoolSize())
+    toy_helper_mc = ROOT.wrem.ToyHelper(args.nToysMC, seed_mc, args.varianceScalingForToys, ROOT.ROOT.GetThreadPoolSize())
 
 ######################################################
 ######################################################
@@ -295,6 +306,13 @@ def build_graph(df, dataset):
         df = df.DefinePerSample("weight", "1.0")
     else:
         df = df.Define("weight", "std::copysign(1.0, genWeight)")
+
+
+    if args.nToysMC > 0:
+        if dataset.is_data:
+            df = df.Define("toyIdxs", toy_helper_data, ["rdfslot_"])
+        else:
+            df = df.Define("toyIdxs", toy_helper_mc, ["rdfslot_"])
 
     df = df.Define("isEvenEvent", "event % 2 == 0")
 
@@ -783,19 +801,29 @@ def build_graph(df, dataset):
 
     return results, weightsum
 
-resultdict = narf.build_and_run(datasets, build_graph)
-if not args.onlyMainHistograms and args.muonScaleVariation == 'smearingWeightsGaus' and not isFloatingPOIsTheoryAgnostic:
-    logger.debug("Apply smearingWeights")
-    muon_calibration.transport_smearing_weights_to_reco(
-        resultdict,
-        smearing_weights_procs,
-        nonClosureScheme = args.nonClosureScheme
-    )
-if args.validationHists:
-    muon_validation.muon_scale_variation_from_manual_shift(resultdict)
+if args.sequentialEventLoops:
+    dataset_sets = [[dataset] for dataset in datasets]
+else:
+    dataset_sets = [datasets]
 
-if not args.noScaleToData:
-    scale_to_data(resultdict)
-    aggregate_groups(datasets, resultdict, groups_to_aggregate)
+for loop_datasets in dataset_sets:
+    resultdict = narf.build_and_run(loop_datasets, build_graph)
+    if not args.onlyMainHistograms and args.muonScaleVariation == 'smearingWeightsGaus' and not isFloatingPOIsTheoryAgnostic:
+        logger.debug("Apply smearingWeights")
+        muon_calibration.transport_smearing_weights_to_reco(
+            resultdict,
+            smearing_weights_procs,
+            nonClosureScheme = args.nonClosureScheme
+        )
+    if args.validationHists:
+        muon_validation.muon_scale_variation_from_manual_shift(resultdict)
 
-output_tools.write_analysis_output(resultdict, f"{os.path.basename(__file__).replace('py', 'hdf5')}", args)
+    if not args.noScaleToData and not args.sequentialEventLoops:
+        scale_to_data(resultdict)
+        aggregate_groups(loop_datasets, resultdict, groups_to_aggregate)
+
+    fout = f"{os.path.basename(__file__).replace('py', 'hdf5')}"
+    fout = output_tools.write_analysis_output(resultdict, fout, args)
+    if not args.appendOutputFile:
+        args.appendOutputFile = fout
+    resultdict = None

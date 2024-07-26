@@ -216,11 +216,17 @@ def add_electroweak_uncertainty(card_tool, ewUncs, flavor="mu", samples="single_
             else:
                 samples = all_samples
 
+            s = hist.tag.Slicer()
+            if ewUnc.startswith("virtual_ew"):
+                preOp = lambda h : h[{"systIdx" : s[0:1]}]
+            else:
+                preOp = lambda h : h[{"systIdx" : s[1:2]}]
+
             card_tool.addSystematic(f"{ewUnc}Corr", **info,
                 processes=samples,
                 labelsByAxis=[f"{ewUnc}Corr"],
                 scale=scale,
-                skipEntries=[(1, -1), (2, -1)] if ewUnc.startswith("virtual_ew") else [(0, -1), (2, -1)],
+                preOp = preOp,
                 group = f"theory_ew_{ewUnc}",
             )  
 
