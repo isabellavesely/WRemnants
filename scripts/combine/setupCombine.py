@@ -1215,6 +1215,7 @@ if __name__ == "__main__":
 
         if len(outnames) == 1:
             outfolder, outfile = outnames[0]
+            outfile += f"_{str(args.rebin[0])}"
         else:
             dir_append = '_'.join(['', *filter(lambda x: x, ['statOnly' if args.doStatOnly else '', args.postfix])])
             unique_names = list(dict.fromkeys([o[1] for o in outnames]))

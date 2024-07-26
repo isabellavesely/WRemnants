@@ -362,7 +362,6 @@ def rebinHistMultiAx(h, axes, edges=[], lows=[], highs=[]):
             logger.debug(f"Did not find axis {ax} in hist. Skipping rebin.")
             continue
         if rebin not in [None, []] and type(rebin) != int:
-            raise ValueError("!!! TEST.")
             h = rebinHist(h, ax, rebin)
         elif low is not None and high is not None:
             # in case high edge is upper edge of last bin we need to manually set the upper limit
@@ -374,8 +373,8 @@ def rebinHistMultiAx(h, axes, edges=[], lows=[], highs=[]):
             axis = h.axes[axis_index]
             if axis.size % rebin != 0:
                 raise ValueError(f"The axis '{ax}' with size {axis.size} is not compatible with the rebin factor of {rebin}!")
-            elif type(hist.axis)!= "Regular":
-                logger.warning(f"The hist axis '{ax}' to rebin is not of type 'Regular', but of type '{type(hist.axis)}'.")
+            elif not isinstance(axis, hist.axis.Regular):
+                logger.warning(f"The hist axis '{ax}' to rebin is not of type 'Regular', but of type '{type(axis).__name__}'.")
             logger.info(f"Rebinning the axis '{ax}' by [{rebin}]")
             sel[ax] = slice(None,None,hist.rebin(rebin))
     return h[sel] if len(sel)>0 else h        
@@ -396,13 +395,8 @@ def disableFlow(h, axis_name):
 
 def rebinHist(h, axis_name, edges, flow=True):
     if type(edges) == int:
-        # if h.axis[axis_name] % edges != 0:
-        #     logger.warning("!!!!!!!rdftghjkkuygh")
-        #     raise ValueError("!!! axis % edges not 0, incompatible")
-        # else: raise ValueError("!!! axis % edges is 0, compatible")
         logger.warning(f"axis_name is {axis_name} and edges to rebin are {edges}")
         return h[{axis_name : hist.rebin(edges)}]
-    # raise ValueError(f"edges are not int! edges look like {edges} and the axis_name is {axis_name}. It has existing edges {h.axes[axis_name].edges}")
     
     ax = h.axes[axis_name]
     ax_idx = [a.name for a in h.axes].index(axis_name)
