@@ -11,7 +11,8 @@ parser,initargs = common.common_parser(analysis_label)
 import ROOT
 import narf
 import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections, muon_calibration, muon_selections, muon_validation, unfolding_tools, theoryAgnostic_tools, helicity_utils
+from wremnants import (helicity_utils, theory_tools, syst_tools,theory_corrections, muon_calibration, muon_prefiring, muon_selections, 
+    muon_efficiencies_binned, muon_efficiencies_smooth, muon_efficiencies_veto, muon_validation, unfolding_tools, theoryAgnostic_tools, pileup, vertex)
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
 from wremnants.helicity_utils_polvar import makehelicityWeightHelper_polvar 
@@ -126,6 +127,11 @@ columns_fakerate = ["goodMuons_eta0", "goodMuons_pt0", "goodMuons_charge0", "tra
 nominal_axes = [axis_eta, axis_pt, axis_charge, *axes_abcd]
 nominal_cols = columns_fakerate
 
+if args.nToysMC > 0:
+    axis_toys = hist.axis.Integer(0, args.nToysMC, underflow=False, overflow=False, name = "toys")
+    nominal_axes = [*nominal_axes, axis_toys]
+    nominal_cols = [*nominal_cols, "toyIdxs"]
+
 # auxiliary axes
 axis_iso = hist.axis.Regular(100, 0, 25, name = "iso",underflow=False, overflow=True)
 axis_relIso = hist.axis.Regular(100, 0, 1, name = "relIso",underflow=False, overflow=True)
@@ -166,20 +172,20 @@ axis_met = hist.axis.Regular(100, 0., 200., name = "met", underflow=False, overf
 axis_recoWpt = hist.axis.Regular(40, 0., 80., name = "recoWpt", underflow=False, overflow=True)
 
 # define helpers
-muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = wremnants.make_muon_prefiring_helpers(era = era)
+muon_prefiring_helper, muon_prefiring_helper_stat, muon_prefiring_helper_syst = muon_prefiring.make_muon_prefiring_helpers(era = era)
 
-qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity()
+qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity()
 
 if args.noScaleFactors:
     logger.info("Running with no scale factors")
 elif args.binnedScaleFactors:
     logger.info("Using binned scale factors and uncertainties")
     # add usePseudoSmoothing=True for tests with Asimov
-    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_binned(filename = data_dir + "/muonSF/allSmooth_GtoH3D.root", era = era, max_pt = axis_pt.edges[-1], usePseudoSmoothing=True)
+    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = muon_efficiencies_binned.make_muon_efficiency_helpers_binned(filename = data_dir + "/muonSF/allSmooth_GtoH3D.root", era = era, max_pt = axis_pt.edges[-1], usePseudoSmoothing=True)
 else:
     logger.info("Using smoothed scale factors and uncertainties")
-    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = wremnants.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
-    muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = wremnants.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
+    muon_efficiency_helper, muon_efficiency_helper_syst, muon_efficiency_helper_stat = muon_efficiencies_smooth.make_muon_efficiency_helpers_smooth(filename = args.sfFile, era = era, what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1], isoEfficiencySmoothing = args.isoEfficiencySmoothing, smooth3D=args.smooth3dsf, isoDefinition=args.isolationDefinition)
+    muon_efficiency_veto_helper, muon_efficiency_veto_helper_syst, muon_efficiency_veto_helper_stat = muon_efficiencies_veto.make_muon_efficiency_helpers_veto(useGlobalOrTrackerVeto = useGlobalOrTrackerVeto, era = era)
 
 logger.info(f"SF file: {args.sfFile}")
 
@@ -187,12 +193,12 @@ muon_efficiency_helper_syst_altBkg = {}
 for es in common.muonEfficiency_altBkgSyst_effSteps:
     altSFfile = args.sfFile.replace(".root", "_altBkg.root")
     logger.info(f"Additional SF file for alternate syst with {es}: {altSFfile}")
-    muon_efficiency_helper_syst_altBkg[es] = wremnants.make_muon_efficiency_helpers_smooth_altSyst(filename = altSFfile, era = era,
+    muon_efficiency_helper_syst_altBkg[es] = muon_efficiencies_smooth.make_muon_efficiency_helpers_smooth_altSyst(filename = altSFfile, era = era,
                                                                                                    what_analysis = thisAnalysis, max_pt = axis_pt.edges[-1],
                                                                                                    effStep=es)
 
-pileup_helper = wremnants.make_pileup_helper(era = era)
-vertex_helper = wremnants.make_vertex_helper(era = era)
+pileup_helper = pileup.make_pileup_helper(era = era)
+vertex_helper = vertex.make_vertex_helper(era = era)
 
 calib_filepaths = common.calib_filepaths
 closure_filepaths = common.closure_filepaths
@@ -205,9 +211,9 @@ z_non_closure_parametrized_helper, z_non_closure_binned_helper = muon_calibratio
 
 mc_calibration_helper, data_calibration_helper, calibration_uncertainty_helper = muon_calibration.make_muon_calibration_helpers(args,era=era)
 
-closure_unc_helper = wremnants.muon_calibration.make_closure_uncertainty_helper(common.closure_filepaths["parametrized"])
-closure_unc_helper_A = wremnants.muon_calibration.make_uniform_closure_uncertainty_helper(0, common.correlated_variation_base_size["A"])
-closure_unc_helper_M = wremnants.muon_calibration.make_uniform_closure_uncertainty_helper(2, common.correlated_variation_base_size["M"])
+closure_unc_helper = muon_calibration.make_closure_uncertainty_helper(common.closure_filepaths["parametrized"])
+closure_unc_helper_A = muon_calibration.make_uniform_closure_uncertainty_helper(0, common.correlated_variation_base_size["A"])
+closure_unc_helper_M = muon_calibration.make_uniform_closure_uncertainty_helper(2, common.correlated_variation_base_size["M"])
 
 smearing_helper, smearing_uncertainty_helper = (None, None) if args.noSmearing else muon_calibration.make_muon_smearing_helpers()
 
@@ -225,19 +231,25 @@ else:
     
 # For polynominal variations
 if isTheoryAgnosticPolVar:
-    theoryAgnostic_helpers_minus = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.theoryAgnosticFileTag, filePath=args.theoryAgnosticFilePath)
-    theoryAgnostic_helpers_plus  = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.theoryAgnosticFileTag, filePath=args.theoryAgnosticFilePath)
+    theoryAgnostic_helpers_minus = makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.theoryAgnosticFileTag, filePath=args.theoryAgnosticFilePath)
+    theoryAgnostic_helpers_plus  = makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.theoryAgnosticFileTag, filePath=args.theoryAgnosticFilePath)
 
 # Helper for muR and muF as polynomial variations
-muRmuFPolVar_helpers_minus = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
-muRmuFPolVar_helpers_plus  = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
-muRmuFPolVar_helpers_Z     = wremnants.helicity_utils_polvar.makehelicityWeightHelper_polvar(genVcharge=0,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+muRmuFPolVar_helpers_minus = makehelicityWeightHelper_polvar(genVcharge=-1, fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+muRmuFPolVar_helpers_plus  = makehelicityWeightHelper_polvar(genVcharge=1,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
+muRmuFPolVar_helpers_Z     = makehelicityWeightHelper_polvar(genVcharge=0,  fileTag=args.muRmuFPolVarFileTag, filePath=args.muRmuFPolVarFilePath, noUL=True)
 
 # recoil initialization
 if not args.noRecoil:
     from wremnants import recoil_tools
     recoilHelper = recoil_tools.Recoil("highPU", args, flavor="mu")
 
+seed_data = 2*args.randomSeedForToys
+seed_mc = 2*args.randomSeedForToys + 1
+
+if args.nToysMC > 0:
+    toy_helper_data = ROOT.wrem.ToyHelper(args.nToysMC, seed_data, 1, ROOT.ROOT.GetThreadPoolSize())
+    toy_helper_mc = ROOT.wrem.ToyHelper(args.nToysMC, seed_mc, args.varianceScalingForToys, ROOT.ROOT.GetThreadPoolSize())
 
 ######################################################
 ######################################################
@@ -294,6 +306,13 @@ def build_graph(df, dataset):
         df = df.DefinePerSample("weight", "1.0")
     else:
         df = df.Define("weight", "std::copysign(1.0, genWeight)")
+
+
+    if args.nToysMC > 0:
+        if dataset.is_data:
+            df = df.Define("toyIdxs", toy_helper_data, ["rdfslot_"])
+        else:
+            df = df.Define("toyIdxs", toy_helper_mc, ["rdfslot_"])
 
     df = df.Define("isEvenEvent", "event % 2 == 0")
 
@@ -782,19 +801,29 @@ def build_graph(df, dataset):
 
     return results, weightsum
 
-resultdict = narf.build_and_run(datasets, build_graph)
-if not args.onlyMainHistograms and args.muonScaleVariation == 'smearingWeightsGaus' and not isFloatingPOIsTheoryAgnostic:
-    logger.debug("Apply smearingWeights")
-    muon_calibration.transport_smearing_weights_to_reco(
-        resultdict,
-        smearing_weights_procs,
-        nonClosureScheme = args.nonClosureScheme
-    )
-if args.validationHists:
-    muon_validation.muon_scale_variation_from_manual_shift(resultdict)
+if args.sequentialEventLoops:
+    dataset_sets = [[dataset] for dataset in datasets]
+else:
+    dataset_sets = [datasets]
 
-if not args.noScaleToData:
-    scale_to_data(resultdict)
-    aggregate_groups(datasets, resultdict, groups_to_aggregate)
+for loop_datasets in dataset_sets:
+    resultdict = narf.build_and_run(loop_datasets, build_graph)
+    if not args.onlyMainHistograms and args.muonScaleVariation == 'smearingWeightsGaus' and not isFloatingPOIsTheoryAgnostic:
+        logger.debug("Apply smearingWeights")
+        muon_calibration.transport_smearing_weights_to_reco(
+            resultdict,
+            smearing_weights_procs,
+            nonClosureScheme = args.nonClosureScheme
+        )
+    if args.validationHists:
+        muon_validation.muon_scale_variation_from_manual_shift(resultdict)
 
-output_tools.write_analysis_output(resultdict, f"{os.path.basename(__file__).replace('py', 'hdf5')}", args)
+    if not args.noScaleToData and not args.sequentialEventLoops:
+        scale_to_data(resultdict)
+        aggregate_groups(loop_datasets, resultdict, groups_to_aggregate)
+
+    fout = f"{os.path.basename(__file__).replace('py', 'hdf5')}"
+    fout = output_tools.write_analysis_output(resultdict, fout, args)
+    if not args.appendOutputFile:
+        args.appendOutputFile = fout
+    resultdict = None

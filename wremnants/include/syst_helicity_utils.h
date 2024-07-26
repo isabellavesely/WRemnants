@@ -47,13 +47,13 @@ class WeightByHelicityHelper : public TensorCorrectionsHelper<T> {
 
    helweight_tensor_t operator() (double mV, double yV, double ptV, int qV, const CSVars &csvars, double nominal_weight) {
      //static_assert(nhelicity == NHELICITY);
-     const auto moments = csAngularFactors(csvars);
+     const auto angular = csAngularFactors(csvars);
      const auto coeffs = base_t::get_tensor(mV, yV, ptV, qV);
      helweight_tensor_t helWeights;
      double sum = 0.;
      for(unsigned int i = 0; i < NHELICITY; i++) {
-       if (i<NHELICITY_WEIGHTS) helWeights(i) = coeffs(i) * moments(i);
-       sum += coeffs(i) * moments(i);//full sum of all components
+       if (i<NHELICITY_WEIGHTS) helWeights(i) = coeffs(i) * angular(i);
+       sum += coeffs(i) * angular(i);//full sum of all components
      }
      double factor = 1./sum;
      helweight_tensor_t helWeights_tensor = factor*helWeights;

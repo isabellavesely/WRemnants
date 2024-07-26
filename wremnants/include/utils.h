@@ -679,6 +679,55 @@ private:
 
 enum class TriggerCat { nonTriggering = 0, triggering = 1 };
 
+std::vector<int> seq_idxs(const int size, const int start = 0) {
+  std::vector<int> res(size);
+  std::iota(res.begin(), res.end(), start);
+  return res;
+}
+
+class ToyHelper {
+
+public:
+    ToyHelper(const std::size_t ntoys, const std::size_t seed = 0, const unsigned int var_scaling = 1, const unsigned int nslots = 1) : ntoys_(ntoys), var_scaling_(var_scaling) {
+        const unsigned int nslotsactual = std::max(nslots, 1U);
+        rng_.reserve(nslotsactual);
+        auto const hash = std::hash<std::string>()("ToyHelper");
+        for (std::size_t islot = 0; islot < nslotsactual; ++islot) {
+            std::seed_seq seq{hash, seed, islot};
+            rng_.emplace_back(seq);
+        }
+    }
+
+    std::vector<int> operator() (const unsigned int slot) {
+
+        std::poisson_distribution pois(1./double(var_scaling_));
+
+        std::vector<int> res;
+        res.reserve(2*ntoys_);
+
+        // index 0 is the nominal, so just one entry, not randomized)
+        res.emplace_back(0);
+
+        auto &rngslot = rng_[slot];
+
+        for (std::size_t itoy = 1; itoy < ntoys_; ++itoy) {
+          const std::size_t nsamples = var_scaling_*pois(rngslot);
+          for (std::size_t isample = 0; isample < nsamples; ++isample) {
+            res.emplace_back(itoy);
+          }
+        }
+
+        return res;
+    }
+
+
+private:
+    std::size_t ntoys_;
+    double var_scaling_;
+    std::vector<mt19937> rng_;
+
+};
+
 }
 
 

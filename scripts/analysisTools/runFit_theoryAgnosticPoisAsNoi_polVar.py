@@ -33,7 +33,7 @@ lumiScaleVarianceLinearly = ["Data"] # [], ["Data", "MC"], use in conjunction wi
 
 splitOOAtag = ""
 setupLumiOption = ""
-setupFakeOption = " --fakeEstimation simple --binnedFakeEstimation"
+setupFakeOption = " --fakeEstimation simple --fakeSmoothingMode binned"
 if splitOOA:
     splitOOAtag = "_splitOOA"
     testFolder = f"{testFolder}{splitOOAtag}"

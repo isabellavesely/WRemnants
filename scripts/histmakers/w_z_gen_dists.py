@@ -1,23 +1,24 @@
-from utilities import boostHistHelpers as hh, common, logging
+from utilities import boostHistHelpers as hh, common, logging, differential
 from utilities.io_tools import output_tools
+
 from wremnants.datasets.datagroups import Datagroups
+from wremnants.datasets.dataset_tools import getDatasets
+from wremnants import theory_tools, syst_tools, theory_corrections, unfolding_tools, helicity_utils
+
+import narf
+
 import os
+import hist
+import math
+import numpy as np
 
 analysis_label = Datagroups.analysisLabel(os.path.basename(__file__))
 parser,initargs = common.common_parser(analysis_label)
 
-import narf
-import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections,unfolding_tools
-from wremnants.datasets.dataset_tools import getDatasets
-import hist
-import math
-import numpy as np
-from utilities.differential import get_theoryAgnostic_axes
-
-parser.add_argument("--skipAngularCoeffs", action='store_true', help="Skip the conversion of helicity moments to angular coeff fractions")
-parser.add_argument("--propagatePDFstoHelicity", action='store_true', help="Propagate PDF uncertainties to helicity moments")
+parser.add_argument("--skipHelicityXsecs", action='store_true', help="Skip the conversion of helicity helicity_xsecs to angular coeff fractions")
+parser.add_argument("--propagatePDFstoHelicity", action='store_true', help="Propagate PDF uncertainties to helicity xsecs")
 parser.add_argument("--useTheoryAgnosticBinning", action='store_true', help="Use theory agnostic binning (coarser) to produce the gen results")
+parser.add_argument("--useUnfoldingBinning", action='store_true', help="Use unfolding binning to produce the gen results")
 parser.add_argument("--singleLeptonHists", action='store_true', help="Also store single lepton kinematics")
 parser.add_argument("--photonHists", action='store_true', help="Also store photon kinematics")
 parser.add_argument("--skipEWHists", action='store_true', help="Also store histograms for EW reweighting. Use with --filter horace")
@@ -47,36 +48,42 @@ axis_massWgen = hist.axis.Variable([4., 13000.], name="massVgen", underflow=True
 
 axis_massZgen = hist.axis.Regular(12, 60., 120., name="massVgen")
 
-theoryAgnostic_axes, _ = get_theoryAgnostic_axes()
+theoryAgnostic_axes, _ = differential.get_theoryAgnostic_axes()
 axis_ptV_thag = theoryAgnostic_axes[0]
 axis_yV_thag = theoryAgnostic_axes[1]
 
-if not args.useTheoryAgnosticBinning:
-    axis_absYVgen = hist.axis.Variable(
-        [0., 0.25, 0.5, 0.75, 1., 1.25, 1.5, 1.75, 2., 2.25, 2.5, 2.75, 3., 3.25, 3.5, 4., 5.], # this is the same binning as hists from theory corrections
-        name = "absYVgen", underflow=False
-    )
-else:
+if args.useTheoryAgnosticBinning:
     axis_absYVgen = hist.axis.Variable(
         axis_yV_thag.edges, #same axis as theory agnostic norms
         name = "absYVgen", underflow=False
+    )
+    axis_ptVgen = hist.axis.Variable(
+        axis_ptV_thag.edges, #same axis as theory agnostic norms, 
+        #common.ptV_binning,
+        name = "ptVgen", underflow=False,
+    )
+elif args.useUnfoldingBinning:
+    unfolding_axes, unfolding_cols, unfolding_selections = differential.get_dilepton_axes(
+        ["ptVGen", "absYVGen"], 
+        common.get_gen_axes(common.get_dilepton_ptV_binning(), True, flow=True), 
+        add_out_of_acceptance_axis=False,
+    )
+    axis_ptVgen = unfolding_axes[0]
+    axis_absYVgen = unfolding_axes[1]
+    axis_massZgen = hist.axis.Regular(1, 60., 120., name="massVgen")
+else:
+    axis_absYVgen = hist.axis.Variable(
+        [0., 0.25, 0.5, 0.75, 1., 1.25, 1.5, 1.75, 2., 2.25, 2.5, 2.75, 3., 3.25, 3.5, 4., 5.], # this is the same binning as hists from theory corrections
+        name = "absYVgen", underflow=False
+     )
+    axis_ptVgen = hist.axis.Variable(
+        (*common.get_dilepton_ptV_binning(fine=False), 13000.),
+        name = "ptVgen", underflow=False,
     )
 
 axis_ygen = hist.axis.Regular(10, -5., 5., name="y")
 axis_rapidity = axis_ygen if args.signedY else axis_absYVgen
 col_rapidity =  "yVgen" if args.signedY else "absYVgen"
-
-if not args.useTheoryAgnosticBinning:
-    axis_ptVgen = hist.axis.Variable(
-    (*common.get_dilepton_ptV_binning(fine=False), 13000.),
-    name = "ptVgen", underflow=False,
-)
-else:
-    axis_ptVgen = hist.axis.Variable(
-    axis_ptV_thag.edges, #same axis as theory agnostic norms, 
-    #common.ptV_binning,
-    name = "ptVgen", underflow=False,
-)
 
 axis_ptqVgen = hist.axis.Variable(
     [round(x, 4) for x in list(np.arange(0, 0.1 + 0.0125, 0.0125))]+[round(x, 4) for x in list(np.arange(0.1+0.025, 0.5 + 0.025, 0.025))], 
@@ -163,7 +170,7 @@ def build_graph(df, dataset):
         axis_lheCosThetaStar = hist.axis.Regular(50, -1, 1, name = "cosThetaStarlhe")
         axis_lhePhiStar = hist.axis.Regular(8, -np.pi, np.pi, circular=True, name="phiStarlhe")
         axis_weak = hist.axis.StrCategory(syst_tools.weakWeightNames(), name="weak")
-        axis_helicity = wremnants.helicity_utils.axis_helicity
+        axis_helicity = helicity_utils.axis_helicity
 
         results.append(df.HistoBoost("lhe_massVptV", [axis_lheMV, axis_lhePtV], ["massVlhe", "ptVlhe", "nominal_weight"], storage=hist.storage.Weight()))
         results.append(df.HistoBoost("lhe_absYVptV", [axis_lheAbsYV, axis_lhePtV], ["absYVlhe", "ptVlhe", "nominal_weight"], storage=hist.storage.Weight()))
@@ -284,64 +291,59 @@ def build_graph(df, dataset):
     nominal_gen = df.HistoBoost("nominal_gen", nominal_axes, [*nominal_cols, "nominal_weight"], storage=hist.storage.Weight())
     results.append(nominal_gen)
 
-    if 'horace' not in dataset.name and 'winhac' not in dataset.name and \
-            "LHEScaleWeight" in df.GetColumnNames() and "LHEPdfWeight" in df.GetColumnNames() and "MEParamWeight" in df.GetColumnNames():
-
-        qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_w_like = dataset.name[0] != "W") if args.helicity else None
-
+    if 'horace' not in dataset.name and 'winhac' not in dataset.name and "LHEScaleWeight" in df.GetColumnNames():
+        qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity(is_w_like = dataset.name[0] != "W") if args.helicity else None
         df = syst_tools.add_theory_hists(results, df, args, dataset.name, corr_helpers, qcdScaleByHelicity_helper, nominal_axes, nominal_cols, base_name="nominal_gen")
+        
+        df = syst_tools.add_helicity_hists(results, df, nominal_axes, nominal_cols, base_name="nominal_gen", storage=hist.storage.Weight())
 
     return results, weightsum
 
 resultdict = narf.build_and_run(datasets, build_graph)
 output_tools.write_analysis_output(resultdict, f"{os.path.basename(__file__).replace('py', 'hdf5')}", args)
 
-logger.info("computing angular coefficients")
-z_moments = None
-w_moments = None
+if not args.skipHelicityXsecs:
+    logger.info("Writing out helicity cross sections")
+    z_helicity_xsecs = None
+    w_helicity_xsecs = None
 
-z_moments_lhe = None
-w_moments_lhe = None
+    z_helicity_xsecs_lhe = None
+    w_helicity_xsecs_lhe = None
 
-if not args.skipAngularCoeffs:
     for dataset in datasets:
         name = dataset.name
-        if "nominal_gen_helicity_moments_scale" not in resultdict[name]["output"]:
-            logger.warning(f"Failed to find helicity_moments_scale hist for proc {name}. Skipping!")
+        if "nominal_gen_helicity_xsecs_scale" not in resultdict[name]["output"]:
+            logger.warning(f"Failed to find nominal_gen_helicity_xsecs_scale hist for proc {name}. Skipping!")
             continue
-        moments = resultdict[name]["output"]["nominal_gen_helicity_moments_scale"].get()
-        moments_lhe = resultdict[name]["output"]["nominal_gen_helicity_moments_scale_lhe"].get()
-        if name in ["ZmumuPostVFP"]:
-            if z_moments is None:
-                z_moments = moments
-                z_moments_lhe = moments_lhe
+        helicity_xsecs = resultdict[name]["output"]["nominal_gen_helicity_xsecs_scale"].get()
+        helicity_xsecs_lhe = resultdict[name]["output"]["nominal_gen_helicity_xsecs_scale_lhe"].get()
+        if name in ["ZmumuPostVFP", "Zee_MiNNLO", "Zmumu_MiNNLO"]:
+            if z_helicity_xsecs is None:
+                z_helicity_xsecs = helicity_xsecs
+                z_helicity_xsecs_lhe = helicity_xsecs_lhe
             else:
-                new_moments = moments
-                new_moments_lhe = moments_lhe
-                z_moments = hh.addHists(z_moments, new_moments, createNew=False)
-                z_moments_lhe = hh.addHists(z_moments_lhe, new_moments_lhe, createNew=False)
+                z_helicity_xsecs = hh.addHists(z_helicity_xsecs, helicity_xsecs, createNew=False)
+                z_helicity_xsecs_lhe = hh.addHists(z_helicity_xsecs_lhe, helicity_xsecs_lhe, createNew=False)
         elif name in ["WplusmunuPostVFP", "WminusmunuPostVFP"]:
-            if w_moments is None:
-                w_moments = moments
-                w_moments_lhe = moments_lhe
+            if w_helicity_xsecs is None:
+                w_helicity_xsecs = helicity_xsecs
+                w_helicity_xsecs_lhe = helicity_xsecs_lhe
             else:
-                new_moments = moments
-                new_moments_lhe = moments_lhe
-                w_moments = hh.addHists(w_moments, new_moments, createNew=False)
-                w_moments_lhe = hh.addHists(w_moments_lhe, new_moments_lhe, createNew=False)
+                w_helicity_xsecs = hh.addHists(w_helicity_xsecs, helicity_xsecs, createNew=False)
+                w_helicity_xsecs_lhe = hh.addHists(w_helicity_xsecs_lhe, helicity_xsecs_lhe, createNew=False)
 
-    moments_out={}
-    if z_moments:
-        moments_out["Z"] = z_moments
-        moments_out["Z_lhe"] = z_moments_lhe
-    if w_moments:
-        moments_out["W"] = w_moments
-        moments_out["W_lhe"] = w_moments_lhe
-    if moments_out:
-        outfname = "w_z_moments"
+    helicity_xsecs_out={}
+    if z_helicity_xsecs:
+        helicity_xsecs_out["Z"] = z_helicity_xsecs
+        helicity_xsecs_out["Z_lhe"] = z_helicity_xsecs_lhe
+    if w_helicity_xsecs:
+        helicity_xsecs_out["W"] = w_helicity_xsecs
+        helicity_xsecs_out["W_lhe"] = w_helicity_xsecs_lhe
+    if helicity_xsecs_out:
+        outfname = "w_z_helicity_xsecs"
         if args.signedY:
             outfname += "_signedY"
         if args.useTheoryAgnosticBinning:
             outfname += "_theoryAgnosticBinning"
         outfname += ".hdf5"
-        output_tools.write_analysis_output(moments_out, outfname, args)
+        output_tools.write_analysis_output(helicity_xsecs_out, outfname, args)

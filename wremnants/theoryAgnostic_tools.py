@@ -1,6 +1,5 @@
-from utilities import differential
-import wremnants
-from wremnants import syst_tools, theory_tools, logging, helicity_utils, helicity_utils_polvar
+from utilities import differential, logging
+from wremnants import syst_tools, theory_tools, helicity_utils
 from copy import deepcopy
 import hist
 
@@ -27,7 +26,7 @@ def select_fiducial_space(df, ptVgenMax, absYVgenMax, accept=True, select=True, 
 
 def define_helicity_weights(df, filename=None):
     # define the helicity tensor, here nominal_weight will only have theory weights, no experimental pieces, it is defined in theory_tools.define_theory_weights_and_corrs
-    weightsByHelicity_helper = wremnants.makehelicityWeightHelper(filename)
+    weightsByHelicity_helper = helicity_utils.makehelicityWeightHelper(filename)
     df = df.Define("helWeight_tensor", weightsByHelicity_helper, ["massVgen", "absYVgen", "ptVgen", "chargeVgen", "csSineCosThetaPhigen", "nominal_weight"])
     df = df.Define("nominal_weight_helicity", "wrem::scalarmultiplyHelWeightTensor(nominal_weight, helWeight_tensor)")
     return df

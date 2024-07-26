@@ -11,7 +11,8 @@ parser,initargs = common.common_parser(analysis_label)
 import ROOT
 import narf
 import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections, muon_calibration, muon_selections, muon_validation
+from wremnants import (theory_tools,syst_tools,theory_corrections, muon_calibration, muon_prefiring, muon_selections, 
+    muon_efficiencies_binned, muon_efficiencies_smooth, muon_validation, unfolding_tools, theoryAgnostic_tools, helicity_utils, pileup, vertex)
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
 import hist
@@ -62,12 +63,12 @@ nominal_cols = ["postFSRmuon_eta0", "postFSRmuon_pt0", "postFSRmuon_charge0", "p
 # sum those groups up in post processing
 groups_to_aggregate = args.aggregateGroups
 
-#qcdScaleByHelicity_helper = wremnants.theory_corrections.make_qcd_uncertainty_helper_by_helicity()
+#qcdScaleByHelicity_helper = theory_corrections.make_qcd_uncertainty_helper_by_helicity()
 
 logger.info("Running with no scale factors")
 
-pileup_helper = wremnants.make_pileup_helper(era = era)
-vertex_helper = wremnants.make_vertex_helper(era = era)
+pileup_helper = pileup.make_pileup_helper(era = era)
+vertex_helper = vertex.make_vertex_helper(era = era)
 
 calib_filepaths = common.calib_filepaths
 closure_filepaths = common.closure_filepaths

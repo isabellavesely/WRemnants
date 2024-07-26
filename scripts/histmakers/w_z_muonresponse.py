@@ -5,8 +5,8 @@ from utilities.io_tools import output_tools
 parser,initargs = common.common_parser("w_mass")
 
 import narf
-import wremnants
-from wremnants import theory_tools,syst_tools,theory_corrections, muon_calibration, muon_selections, muon_validation, unfolding_tools
+from wremnants import (theory_tools,syst_tools,theory_corrections, muon_calibration, muon_selections, muon_validation, 
+    pileup, vertex, unfolding_tools)
 from wremnants.histmaker_tools import scale_to_data, aggregate_groups
 from wremnants.datasets.dataset_tools import getDatasets
 import hist
@@ -45,8 +45,8 @@ axis_nvalidpixel = hist.axis.Integer(0, 10, name="nvalidpixel")
 
 response_axes = [axis_genPt, axis_genEta, axis_genCharge, axis_qopr]
 
-pileup_helper = wremnants.make_pileup_helper(era = era)
-vertex_helper = wremnants.make_vertex_helper(era = era)
+pileup_helper = pileup.make_pileup_helper(era = era)
+vertex_helper = vertex.make_vertex_helper(era = era)
 
 calib_filepaths = common.calib_filepaths
 mc_jpsi_crctn_helper, data_jpsi_crctn_helper, jpsi_crctn_MC_unc_helper, jpsi_crctn_data_unc_helper = muon_calibration.make_jpsi_crctn_helpers(args, calib_filepaths, make_uncertainty_helper=True)
@@ -63,7 +63,7 @@ nreps = 100
 smearing_helper_simple_multi = ROOT.wrem.SmearingHelperSimpleMulti[nreps](sigmarel)
 
 if args.testHelpers:
-    response_helper = ROOT.wrem.SplinesDifferentialWeightsHelper(f"{wremnants.data_dir}/calibration/muon_response.tflite")
+    response_helper = ROOT.wrem.SplinesDifferentialWeightsHelper(f"{common.data_dir}/calibration/muon_response.tflite")
 
     smearing_helper_simple = ROOT.wrem.SmearingHelperSimple(sigmarel, ROOT.ROOT.GetThreadPoolSize())
     smearing_helper_simple_weights = ROOT.wrem.SmearingHelperSimpleWeight(sigmarel)

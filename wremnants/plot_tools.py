@@ -2,8 +2,7 @@ import pathlib
 import mplhep as hep
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib import ticker
-from matplotlib import patches
+from matplotlib import patches, ticker
 from matplotlib.ticker import StrMethodFormatter # for setting number of decimal places on tick labels
 from utilities import boostHistHelpers as hh,common,logging
 from utilities.io_tools import output_tools

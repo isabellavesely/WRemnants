@@ -7,8 +7,8 @@ import pathlib
 import hist
 import pickle
 import lz4.frame
-from .correctionsTensor_helper import makeCorrectionsTensor
-from .theory_tools import moments_to_angular_coeffs
+from wremnants.correctionsTensor_helper import makeCorrectionsTensor
+from wremnants.theory_tools import helicity_xsec_to_angular_coeffs
 from utilities import common, logging
 from utilities import boostHistHelpers as hh
 from utilities.io_tools import input_tools
@@ -30,13 +30,13 @@ axis_helicity_multidim = hist.axis.Integer(-1, 8, name="helicitySig", overflow=F
 #creates the helicity weight tensor
 def makehelicityWeightHelper(is_w_like = False, filename=None):
     if filename is None:
-        filename = f"{common.data_dir}/angularCoefficients/w_z_moments_theoryAgnosticBinning.hdf5"
+        filename = f"{common.data_dir}/angularCoefficients//w_z_moments_theoryAgnosticBinning.hdf5"
     with h5py.File(filename, "r") as ff:
         out = input_tools.load_results_h5py(ff)
 
-    moments = out["Z"] if is_w_like else out["W"]
+    hist_helicity_xsec_scales = out["Z"] if is_w_like else out["W"]
 
-    corrh = moments_to_angular_coeffs(moments)
+    corrh = helicity_xsec_to_angular_coeffs(hist_helicity_xsec_scales)
 
     if 'muRfact' in corrh.axes.name:
         corrh = corrh[{'muRfact' : 1.j,}]

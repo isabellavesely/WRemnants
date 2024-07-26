@@ -40,6 +40,8 @@ if __name__ == "__main__":
     parser.add_argument(     "--showAllProbesMC", action='store_true', help="Show sum of failing and passing probes for MC (when not using --plotPassProbes, and it only works for steps where standalone muons were used)")
     parser.add_argument(     "--plotPassProbes", action='store_true', help="Plot passing probes instead of failing probes")
     parser.add_argument(     "--plotPassAltProbes", action='store_true', help="Plot passing probes instead of failing probes")
+    parser.add_argument(     '--skipNorm', dest='normalize', action='store_false',
+                             help='Normalize to area of first histogram')
     args = parser.parse_args()
     logger = logging.setup_logger(__file__, args.verbose, args.noColorLogger)
 
@@ -123,10 +125,11 @@ if __name__ == "__main__":
             hdata.SetMarkerStyle(20)
             hdata.SetMarkerSize(1)
 
-            hmcTotScale = hdata.Integral()/hmcTot.Integral() if hmcTot.Integral() > 0.0 else 1.0
-            hmcTot.Scale(hmcTotScale)
-            hmcScale = hdata.Integral()/hmc.Integral() if hmc.Integral() > 0.0 else 1.0
-            hmc.Scale(hmcScale)
+            if args.normalize:
+                hmcTotScale = hdata.Integral()/hmcTot.Integral() if hmcTot.Integral() > 0.0 else 1.0
+                hmcTot.Scale(hmcTotScale)
+                hmcScale = hdata.Integral()/hmc.Integral() if hmc.Integral() > 0.0 else 1.0
+                hmc.Scale(hmcScale)
 
             miny, maxy =  getMinMaxMultiHisto([hdata, hmc, hmcTot] if args.showAllProbesMC else [hdata, hmc], excludeEmpty=False, sumError=False)
 

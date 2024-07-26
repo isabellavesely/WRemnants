@@ -40,7 +40,7 @@ def get_selection_edges(axis_name, upper_bound=False):
 # default abcd_variables to look for
 abcd_variables = (("mt", "passMT"), ("relIso", "passIso"), ("iso", "passIso"), ("relJetLeptonDiff", "passIso"), ("dxy", "passDxy"))
 
-def get_eigen_variations(params, cov, sign=1, force_positive=False):
+def get_parameter_eigenvectors(params, cov, sign=1, force_positive=False):
     # diagonalize and get eigenvalues and eigenvectors
     e, v = np.linalg.eigh(cov) # The column eigenvectors[:, i] is the normalized eigenvector corresponding to the eigenvalue eigenvalues[i], 
     vT = np.transpose(v, axes=(*np.arange(v.ndim-2), v.ndim-1, v.ndim-2)) # transpose v to have row eigenvectors[i, :] for easier computations
@@ -66,11 +66,12 @@ def get_eigen_variations(params, cov, sign=1, force_positive=False):
         logger.warning(f"Found {np.sum(params_var.sum(axis=-1) == 0)} variations where all coefficients are 0") 
     return params_var
 
-def make_eigen_variations(params, cov, func, x1, x2=None, force_positive=False):
-    params_up = get_eigen_variations(params, cov, sign=1, force_positive=force_positive)
+def make_eigenvector_predictons(params, cov, func, x1, x2=None, force_positive=False):
+    # return alternate values i.e. nominal+/-variation
+    params_up = get_parameter_eigenvectors(params, cov, sign=1, force_positive=force_positive)
     y_pred_up = func(x1, params_up) if x2 is None else func(x1, x2, params_up)
     y_pred_up = np.moveaxis(y_pred_up, params.ndim-1, -1) # put parameter variations last
-    params_dn = get_eigen_variations(params, cov, sign=-1, force_positive=force_positive)
+    params_dn = get_parameter_eigenvectors(params, cov, sign=-1, force_positive=force_positive)
     y_pred_dn = func(x1, params_dn) if x2 is None else func(x1, x2, params_dn)
     y_pred_dn = np.moveaxis(y_pred_dn, params.ndim-1, -1) # put parameter variations last
     return np.stack((y_pred_up, y_pred_dn), axis=-1)
@@ -251,7 +252,7 @@ class HistselectorABCD(object):
     def __init__(self, h, name_x=None, name_y=None,
         fakerate_axes=["eta","pt","charge"], 
         smoothing_axis_name="pt", 
-        rebin_smoothing_axis=None, # can be a list of bin edges, "automatic", or None
+        rebin_smoothing_axis="automatic", # can be a list of bin edges, "automatic", or None
         upper_bound_y=None, # using an upper bound on the abcd y-axis (e.g. isolation)
         integrate_x=True, # integrate the abcd x-axis in final histogram (allows simplified procedure e.g. for extrapolation method)   
     ):           
@@ -356,9 +357,8 @@ class SignalSelectorABCD(HistselectorABCD):
 class FakeSelectorSimpleABCD(HistselectorABCD):
     # simple ABCD method
     def __init__(self, h, *args, 
-        smooth_fakerate=True, 
+        smoothing_mode="full",
         smoothing_order_fakerate=2,
-        polynomial="bernstein", # "power",
         throw_toys=None,#"normal", # None, 'normal' or 'poisson'
         global_scalefactor=1, # apply global correction factor on prediction
         **kwargs
@@ -372,15 +372,26 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         self.h_nominal = None
         self.global_scalefactor = global_scalefactor
 
-        ### interpolate/smooth in x-axis in application region
-        self.polynomial = polynomial 
+        # select appropriate polynomial depending on type of smoothing
+        if smoothing_mode == "fakerate":
+            self.polynomial = "bernstein"
+        else:
+            self.polynomial = "power"
+
+        # rebinning doesn't make sense for binned estimation
+        if smoothing_mode == "binned":
+            self.rebin_smoothing_axis = None
+
+        if hasattr(self, "fakerate_integration_axes"):
+            if smoothing_mode == "full" and self.fakerate_integration_axes:
+                raise NotImplementedError("Smoothing of full fake prediction is not currently supported together with integration axes.")
 
         self.throw_toys = throw_toys
 
         # fakerate factor
-        self.smooth_fakerate = smooth_fakerate
+        self.smoothing_mode = smoothing_mode
         self.smoothing_order_fakerate = smoothing_order_fakerate
-        if self.smooth_fakerate:
+        if self.smoothing_mode != "binned":
             logger.info(f"Fakerate smoothing order is {self.smoothing_order_fakerate}")
 
         # solve with non negative least squares
@@ -390,9 +401,9 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             self.solve = solve_leastsquare
 
         # set smooth functions
-        self.f_frf = None
-        if self.smooth_fakerate:
-            self.f_frf = get_regression_function(self.smoothing_order_fakerate, pol=self.polynomial)
+        self.f_smoothing = None
+        if self.smoothing_mode != "binned":
+            self.f_smoothing = get_regression_function(self.smoothing_order_fakerate, pol=self.polynomial)
 
     def transfer_variances(self, h, set_nominal=False):
         if set_nominal:
@@ -405,31 +416,33 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             raise RuntimeError(f"Failed to transfer variances")
         return h
 
-    def get_hist(self, h, is_nominal=False, variations_frf=False, flow=True):
+    def get_hist(self, h, is_nominal=False, variations_smoothing=False, flow=True):
         idx_x = h.axes.name.index(self.name_x)
-        if self.smooth_fakerate:
+        if self.smoothing_mode == "fakerate":
             h = self.transfer_variances(h, set_nominal=is_nominal)
-            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
+            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_smoothing)
             c, cvar = self.get_yields_applicationregion(h)
             d = c * y_frf
 
-            if variations_frf:
+            if variations_smoothing:
                 dvar = c[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
             else:
                 # only take bin by bin uncertainty from c region
                 dvar = y_frf**2 * cvar
-        else:
+        elif self.smoothing_mode == "full":
+            raise NotImplementedError("full smoothing not implemented for simple ABCD")
+        elif self.smoothing_mode == "binned":
             d, dvar = self.calculate_fullABCD(h)
+        else:
+            raise ValueError("invalid choice of smoothing_mode")
 
         # set histogram in signal region
-        hSignal = hist.Hist(*h[{self.name_x: self.sel_x, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
-
-        if variations_frf and self.smooth_fakerate:
-            hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
-        else:
-            hSignal.values(flow=flow)[...] = d
-            if hSignal.storage_type == hist.storage.Weight:
-                hSignal.variances(flow=flow)[...] = dvar
+        hSignal = hist.Hist(*h[{self.name_x: self.sel_x, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_smoothing else h.storage_type())
+        hSignal.values(flow=flow)[...] = d
+        if variations_smoothing and self.smoothing_mode != "binned":
+            hSignal = self.get_syst_hist(hSignal, d, dvar, flow=flow)
+        elif hSignal.storage_type == hist.storage.Weight:
+            hSignal.variances(flow=flow)[...] = dvar
 
         if self.global_scalefactor != 1:
             hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
@@ -463,9 +476,9 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             y_var = bvar/a**2 + b**2*avar/a**4
             y_var[abs(a) < 1]=0
 
-        if self.smooth_fakerate:
+        if self.smoothing_mode == "fakerate":
             x = self.get_bin_centers_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bins in h)
-            y, y_var = self.smoothen_fakerate(h, x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
+            y, y_var = self.smoothen(h, x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
 
         # broadcast abcd-x axis and application axes
         slices=[slice(None) if n in ha.axes.name else np.newaxis for n in h[{self.name_x: self.sel_x}].axes.name if n != self.name_y]
@@ -474,7 +487,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         return y, y_var
 
-    def smoothen_fakerate(self, h, x, y, y_var, syst_variations=False, auxiliary_info=False, flow=True):
+    def smoothen(self, h, x, y, y_var, syst_variations=False, auxiliary_info=False, flow=True):
         if h.storage_type == hist.storage.Weight:
             # transform with weights
             w = 1/np.sqrt(y_var)
@@ -496,10 +509,10 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
 
         # evaluate in range of original histogram
         x_smooth_orig = self.get_bin_centers_smoothing(h, flow=True)
-        y_smooth_orig = self.f_frf(x_smooth_orig, params)
+        y_smooth_orig = self.f_smoothing(x_smooth_orig, params)
 
         if syst_variations:
-            y_smooth_var_orig = self.make_eigen_variations_frf(params, cov, x_smooth_orig)
+            y_smooth_var_orig = self.make_eigenvector_predictons_frf(params, cov, x_smooth_orig)
         else: 
             y_smooth_var_orig = None
 
@@ -515,7 +528,7 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
             logger.warning(f"Found {np.sum(y_smooth_var_orig<0)} bins with negative fake rate factor variations")
 
         if auxiliary_info:
-            y_pred = self.f_frf(x, params)
+            y_pred = self.f_smoothing(x, params)
             # flatten
             y_pred = y_pred.reshape(y.shape) 
             w = w.reshape(y.shape)
@@ -524,28 +537,28 @@ class FakeSelectorSimpleABCD(HistselectorABCD):
         else:
             return y_smooth_orig, y_smooth_var_orig
 
-    def get_syst_variations_hist(self, hNominal, values, variations, flow=True):
-        # set systematic histogram with differences between variation and syst
-        hsyst = hist.Hist(*hNominal.axes, hist.axis.Integer(0, variations.shape[-2], name="_param", overflow=False, underflow=False), common.down_up_axis, storage=hist.storage.Double())
+    def get_syst_hist(self, hNominal, values, alternate, flow=True):
+        # return systematic histogram with nominal and nominal+variation on diagonal elements for systematic axes of parameters and up/down variations
+        hsyst = hist.Hist(*hNominal.axes, hist.axis.Integer(0, alternate.shape[-2], name="_param", overflow=False, underflow=False), common.down_up_axis, storage=hist.storage.Double())
 
-        # check variations lower than 0
-        vcheck = variations < (-1*values[...,np.newaxis,np.newaxis])
-        if np.sum(vcheck) > 0:
-            logger.warning(f"Found {np.sum(vcheck)} bins with variations giving negative yields, set these to 0")
-            # variations[vcheck] = 0 
+        # check alternate lower than 0
+        # vcheck = alternate < (-1*values[...,np.newaxis,np.newaxis])
+        # if np.sum(vcheck) > 0:
+        #     logger.warning(f"Found {np.sum(vcheck)} bins with alternate giving negative yields, set these to 0")
+        #     alternate[vcheck] = 0 
 
-        hsyst.values(flow=flow)[...] = variations
+        hsyst.values(flow=flow)[...] = alternate-values[...,np.newaxis,np.newaxis]
 
         # decorrelate in fakerate axes
-        axes_names = [n for n in self.fakerate_axes if not self.smooth_fakerate or n != self.smoothing_axis_name]
+        axes_names = [n for n in self.fakerate_axes if self.smoothing_mode=="binned" or n != self.smoothing_axis_name]
         hsyst = hh.expand_hist_by_duplicate_axes(hsyst, axes_names, [f"_{n}" for n in axes_names])    
 
         # add nominal hist and broadcast
         hNominal = hh.addHists(hNominal, hsyst)
         return hNominal
 
-    def make_eigen_variations_frf(self, params, cov, x1, x2=None):
-        return make_eigen_variations(params, cov, func=self.f_frf, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
+    def make_eigenvector_predictons_frf(self, params, cov, x1, x2=None):
+        return make_eigenvector_predictons(params, cov, func=self.f_smoothing, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
 
     def get_bin_centers_smoothing(self, h, flow=True):
         return self.get_bin_centers(h, self.smoothing_axis_name, self.smoothing_axis_min, self.smoothing_axis_max, flow=flow)
@@ -616,13 +629,11 @@ class FakeSelectorSimultaneousABCD(FakeSelectorSimpleABCD):
 class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
     # extrapolate the fakerate in the abcd x axis by finding an analytic description in the dx region
     def __init__(self, h, *args, 
-        smooth_fakerate=True,
-        polynomial="power",
         extrapolation_order=1,
         rebin_x="automatic", # can be a list of bin edges, "automatic", or None
         **kwargs
     ):
-        super().__init__(h, *args, smooth_fakerate=smooth_fakerate, polynomial=polynomial, **kwargs)
+        super().__init__(h, *args, **kwargs)
         self.set_selections_x()
 
         self.extrapolation_order = extrapolation_order
@@ -636,10 +647,10 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         if self.polynomial == "bernstein":
             logger.warning(f"It is not recommended to use {self.polynomial} polynomials for extrapolation.")
 
-        if self.smooth_fakerate:
+        if self.smoothing_mode != "binned":
             raise NotImplementedError("Smooting fakerate is not implemented")
 
-        self.f_frf = get_regression_function(self.extrapolation_order, pol=self.polynomial)
+        self.f_smoothing = get_regression_function(self.extrapolation_order, pol=self.polynomial)
 
     # set slices object for selection of sideband regions
     def set_selections_x(self):
@@ -648,7 +659,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
         self.sel_x = s[x0:x1:] if x0 is not None and x1.imag > x0.imag else s[x1:x0:]
         self.sel_dx = s[x1:x3:] if x3 is None or x3.imag > x1.imag else s[x3:x1:]
 
-    def get_hist(self, h, is_nominal=False, variations_frf=False, flow=True):
+    def get_hist(self, h, is_nominal=False, variations_smoothing=False, flow=True):
         h = self.transfer_variances(h, set_nominal=is_nominal)
         c, cvar = self.get_yields_applicationregion(h)
         if self.integrate_x:
@@ -667,8 +678,8 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
             else:
                 dvar = None
         else:
-            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
-            if variations_frf:
+            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_smoothing)
+            if variations_smoothing:
                 dvar = c[..., np.newaxis,np.newaxis] * y_frf_var
             else:
                 # only take bin by bin uncertainty from c region
@@ -677,13 +688,12 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
 
         # set histogram in signal region
         axes = h[{self.name_x: self.sel_x if not self.integrate_x else hist.sum, self.name_y: self.sel_y}].axes
-        hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
-        if variations_frf:
-            hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
-        else:
-            hSignal.values(flow=flow)[...] = d
-            if dvar is not None and hSignal.storage_type == hist.storage.Weight:
-                hSignal.variances(flow=flow)[...] = dvar
+        hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_smoothing else h.storage_type())
+        hSignal.values(flow=flow)[...] = d
+        if variations_smoothing:
+            hSignal = self.get_syst_hist(hSignal, d, dvar, flow=flow)
+        elif dvar is not None and hSignal.storage_type == hist.storage.Weight:
+            hSignal.variances(flow=flow)[...] = dvar
 
         if self.global_scalefactor != 1:
             hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
@@ -760,10 +770,10 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
 
         # evaluate in range of application region of original histogram
         x_extrapolation = self.get_bin_centers(h, self.name_x, flow=flow)
-        y_extrapolation = self.f_frf(x_extrapolation, params)
+        y_extrapolation = self.f_smoothing(x_extrapolation, params)
 
         if syst_variations:
-            y_extrapolation_var = self.make_eigen_variations_frf(params, cov, x_extrapolation)
+            y_extrapolation_var = self.make_eigenvector_predictons_frf(params, cov, x_extrapolation)
         else: 
             y_extrapolation_var = None
 
@@ -779,7 +789,7 @@ class FakeSelectorExtrapolateABCD(FakeSelectorSimpleABCD):
             logger.warning(f"Found {np.sum(y_extrapolation_var<0)} bins with negative fake rate factor variations")
 
         if auxiliary_info:
-            y_pred = self.f_frf(x, params)
+            y_pred = self.f_smoothing(x, params)
             # flatten
             y_pred = y_pred.reshape(y.shape) 
             w = w.reshape(y.shape)
@@ -804,40 +814,43 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
         self.sel_dx = s[x1:x2:hist.sum] if x2.imag > x1.imag else s[x2:x1:hist.sum]
         self.sel_d2x = s[x2:x3:hist.sum] if x3.imag > x2.imag else s[x3:x2:hist.sum]
 
-    def get_hist(self, h, is_nominal=False, variations_frf=False, flow=True):
+    def get_hist(self, h, is_nominal=False, variations_smoothing=False, flow=True):
         idx_x = h.axes.name.index(self.name_x)
-        if self.smooth_fakerate:
+        if self.smoothing_mode == "fakerate":
             h = self.transfer_variances(h, set_nominal=is_nominal)
 
-            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
+            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_smoothing)
             c, cvar = self.get_yields_applicationregion(h)
             d = c * y_frf
 
-            if variations_frf:
+            if variations_smoothing:
                 dvar = c[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
             else:
                 # only take bin by bin uncertainty from c region
                 dvar = y_frf**2 * cvar
-        else:
+        elif self.smoothing_mode == "full":
+            h = self.transfer_variances(h, set_nominal=is_nominal)
+            d, dvar = self.calculate_fullABCD_smoothed(h, flow=flow, syst_variations=variations_smoothing)
+        elif self.smoothing_mode == "binned":
             # no smoothing of rates
-            d, dvar = self.calculate_fullABCD(h)
+            d, dvar = self.calculate_fullABCD(h, flow=flow)
+        else:
+            raise ValueError("invalid choice of smoothing_mode")
 
         # set histogram in signal region
-        hSignal = hist.Hist(*h[{self.name_x: self.sel_x if not self.integrate_x else hist.sum, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
-
-        if variations_frf and self.smooth_fakerate:
-            hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
-        else:
-            hSignal.values(flow=flow)[...] = d
-            if hSignal.storage_type == hist.storage.Weight:
-                hSignal.variances(flow=flow)[...] = dvar
+        hSignal = hist.Hist(*h[{self.name_x: self.sel_x if not self.integrate_x else hist.sum, self.name_y: self.sel_y}].axes, storage=hist.storage.Double() if variations_smoothing else h.storage_type())
+        hSignal.values(flow=flow)[...] = d
+        if variations_smoothing and self.smoothing_mode != "binned":
+            hSignal = self.get_syst_hist(hSignal, d, dvar, flow=flow)
+        elif hSignal.storage_type == hist.storage.Weight:
+            hSignal.variances(flow=flow)[...] = dvar
 
         if self.global_scalefactor != 1:
             hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
 
         return hSignal
 
-    def calculate_fullABCD(self, h, flow=True):
+    def calculate_fullABCD(self, h, flow=True, syst_variations=False):
         if len(self.fakerate_integration_axes) > 0:
             logger.warning(f"Binned fake estimation is performed but fakerate integration axes {self.fakerate_integration_axes} are set, the bin-by-bin stat uncertainties are not correct along this axis.")
         if not self.integrate_x:
@@ -874,6 +887,64 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             cvar = hc.variances(flow=flow)
             dvar = frf**2 * cvar + d**2 * (4 * bvar/b**2 + 4 * avar/a**2 + axvar/ax**2 + bxvar/bx**2)[*slices]
         
+        return d, dvar
+
+    def calculate_fullABCD_smoothed(self, h, flow=True, syst_variations=False):
+        hNew = hh.rebinHist(h, self.smoothing_axis_name, self.rebin_smoothing_axis) if self.rebin_smoothing_axis is not None else h
+
+        d, dvar = self.calculate_fullABCD(h, flow=flow)
+        dsel, dvarsel = self.calculate_fullABCD(hNew, flow=flow)
+
+        smoothidx = hNew.axes.name.index(self.smoothing_axis_name)
+        smoothing_axis = hNew.axes[self.smoothing_axis_name]
+        nax = len(d.shape)
+
+        # underflow and overflow are left unchanged along the smoothing axis
+        # so we need to exclude them if they have been otherwise included
+        if flow:
+            smoothstart = 1 if smoothing_axis.traits.underflow else 0
+            smoothstop = -1 if smoothing_axis.traits.overflow else None
+            smoothslice = slice(smoothstart, smoothstop)
+        else:
+            smoothslice = slice(None)
+
+        sel = nax*[slice(None)]
+        sel[smoothidx] = smoothslice
+
+        dsel =  dsel[*sel]
+        dvarsel = dvarsel[*sel]
+
+        xwidth = hNew.axes[self.smoothing_axis_name].widths
+        xwidthtgt = h.axes[self.smoothing_axis_name].widths
+
+        xwidth = xwidth[*smoothidx*[None], :, *(nax - smoothidx - 1)*[None]]
+        xwidthtgt = xwidthtgt[*smoothidx*[None], :, *(nax - smoothidx - 1)*[None]]#
+
+        dsel *= 1./xwidth
+        dvarsel *= 1./xwidth**2
+
+        logd = np.where(dsel>0., np.log(dsel), 0.)
+        logdvar = np.where(dsel>0., dvarsel/dsel**2, 1.)
+        x = smoothing_axis.centers
+
+        if syst_variations:
+            logd, logdvar = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations)
+        else:
+            logd, logdvar, params, cov, chi2, ndf = self.smoothen(h, x, logd, logdvar, syst_variations=syst_variations, auxiliary_info=True)
+            logger.debug("ndof", ndf)
+            logger.debug("chisq stats", np.mean(chi2), np.std(chi2), np.min(chi2), np.max(chi2))
+            # print(f"chisq/ndof = {chi2}/{ndf}")
+        # leave the underflow and overflow unchanged if present
+        d[*sel] = np.exp(logd)*xwidthtgt
+        if syst_variations:
+            # leave the underflow and overflow unchanged if present
+            dvar = dvar[..., None, None]*np.ones((*dvar.shape, *logdvar.shape[-2:]), dtype=dvar.dtype)
+            dvar[*sel, :, :] = np.exp(logdvar)*xwidthtgt[..., None, None]**2
+        else:
+            # with full smoothing all of the statistical uncertainty is included in the
+            # explicit variations, so the remaining binned uncertainty is zero
+            dvar = np.zeros_like(d)
+
         return d, dvar
 
     def compute_fakeratefactor(self, h, syst_variations=False, flow=True, auxiliary_info=False):
@@ -943,9 +1014,9 @@ class FakeSelector1DExtendedABCD(FakeSelectorSimpleABCD):
             logger.info("Done with toys")
 
 
-        if self.smooth_fakerate:
+        if self.smoothing_mode == "fakerate":
             x = self.get_bin_centers_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bin in h)
-            y, y_var = self.smoothen_fakerate(h, x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
+            y, y_var = self.smoothen(h, x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info, flow=flow)
 
         # broadcast abcd-x axis and application axes
         slices=[slice(None) if n in ha.axes.name else np.newaxis for n in h[{self.name_x: self.sel_x}].axes.name if n != self.name_y]
@@ -1014,14 +1085,14 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
         self.sel_dy = s[y1:y2:hist.sum] if y2.imag > y1.imag else s[y2:y1:hist.sum]
         self.sel_d2y = s[y2:y3:hist.sum] if y3 is None or y3.imag > y2.imag else s[y3:y2:hist.sum]
 
-    def get_hist(self, h, is_nominal=False, variations_scf=False, variations_frf=False, variations_full=False, flow=True):
-        if variations_scf and variations_frf:
+    def get_hist(self, h, is_nominal=False, variations_scf=False, variations_smoothing=False, variations_full=False, flow=True):
+        if variations_scf and variations_smoothing:
             raise RuntimeError(f"Can only calculate vairances for fakerate factor or shape correction factor but not both")
 
-        if self.smooth_fakerate or self.interpolate_x or self.smooth_shapecorrection:
+        if self.smoothing_mode=="fakerate" or self.interpolate_x or self.smooth_shapecorrection:
             h = self.transfer_variances(h, set_nominal=is_nominal)
 
-            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_frf)
+            y_frf, y_frf_var = self.compute_fakeratefactor(h, syst_variations=variations_smoothing)
             y_scf, y_scf_var = self.compute_shapecorrection(h, syst_variations=variations_scf)
             c, cvar = self.get_yields_applicationregion(h)
 
@@ -1029,7 +1100,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
             if variations_scf and (self.interpolate_x or self.smooth_shapecorrection):
                 dvar = c[..., np.newaxis,np.newaxis] * y_frf[...,np.newaxis,np.newaxis] * y_scf_var[...,:,:]
-            elif variations_frf and self.smooth_fakerate:
+            elif variations_smoothing and self.smoothing_mode=="fakerate":
                 dvar = c[..., np.newaxis,np.newaxis] * y_scf[..., np.newaxis,np.newaxis] * y_frf_var[...,:,:]
             elif self.smooth_shapecorrection or self.interpolate_x:
                 # only take bin by bin uncertainty from c region
@@ -1042,20 +1113,23 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 idx_x = [n for n in h.axes.name if n != self.name_y].index(self.name_x)
                 d = d.sum(axis=idx_x)
                 dvar = dvar.sum(axis=idx_x)
-        else:
+        elif self.smoothing_mode == "full":
+            raise NotImplementedError()
+        elif self.smoothing_mode == "binned":
             # no smoothing of rates
-            d, dvar = self.calculate_fullABCD(h)            
+            d, dvar = self.calculate_fullABCD(h)
+        else:
+            raise ValueError("invalid choice of smoothing mode")
+
 
         # set histogram in signal region
         axes = [a for a in h[{self.name_x:self.sel_x if not self.integrate_x else hist.sum}].axes if a.name != self.name_y]
-        hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_frf else h.storage_type())
-
-        if variations_scf or variations_frf or variations_full:
-            hSignal = self.get_syst_variations_hist(hSignal, d, dvar, flow=flow)
-        else:
-            hSignal.values(flow=flow)[...] = d
-            if hSignal.storage_type == hist.storage.Weight:
-                hSignal.variances(flow=flow)[...] = dvar
+        hSignal = hist.Hist(*axes, storage=hist.storage.Double() if variations_smoothing else h.storage_type())
+        hSignal.values(flow=flow)[...] = d
+        if variations_scf or variations_smoothing or variations_full:
+            hSignal = self.get_syst_hist(hSignal, d, dvar, flow=flow)
+        elif hSignal.storage_type == hist.storage.Weight:
+            hSignal.variances(flow=flow)[...] = dvar
 
         if self.global_scalefactor != 1:
             hSignal = hh.scaleHist(hSignal, self.global_scalefactor)
@@ -1172,7 +1246,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 y_smooth_orig = self.f_scf(x_interpol_orig, x_smooth_orig, params)
 
                 if syst_variations:
-                    y_smooth_var_orig = self.make_eigen_variations_scf(params, cov, x_interpol_orig, x_smooth_orig)
+                    y_smooth_var_orig = self.make_eigenvector_predictons_scf(params, cov, x_interpol_orig, x_smooth_orig)
                 else: 
                     y_smooth_var_orig = None
 
@@ -1195,7 +1269,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
                 y_smooth_orig = self.f_scf(x_interpol_orig, params)
 
                 if syst_variations:
-                    y_smooth_var_orig = self.make_eigen_variations_scf(params, cov, x_interpol_orig)
+                    y_smooth_var_orig = self.make_eigenvector_predictons_scf(params, cov, x_interpol_orig)
                 else: 
                     y_smooth_var_orig = None
 
@@ -1242,7 +1316,7 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
             y_smooth_orig = self.f_scf(x_smooth_orig, params)
 
             if syst_variations:
-                y_smooth_var_orig = self.make_eigen_variations_scf(params, cov, x_smooth_orig)
+                y_smooth_var_orig = self.make_eigenvector_predictons_scf(params, cov, x_smooth_orig)
             else: 
                 y_smooth_var_orig = None
 
@@ -1353,9 +1427,9 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
             logger.info("Done with toys")
 
-        if self.smooth_fakerate:
+        if self.smoothing_mode == "fakerate":
             x = self.get_bin_centers_smoothing(hNew, flow=True) # the bins where the smoothing is performed (can be different to the bin in h)
-            y, y_var = self.smoothen_fakerate(h, x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info)
+            y, y_var = self.smoothen(h, x, y, y_var, syst_variations=syst_variations, auxiliary_info=auxiliary_info)
 
         # broadcast abcd-x axis and application axes
         slices=[slice(None) if n in ha.axes.name else np.newaxis for n in h[{self.name_x: self.sel_x}].axes.name if n != self.name_y]
@@ -1364,8 +1438,8 @@ class FakeSelector2DExtendedABCD(FakeSelector1DExtendedABCD):
 
         return y, y_var
 
-    def make_eigen_variations_scf(self, params, cov, x1, x2=None):
-        return make_eigen_variations(params, cov, func=self.f_scf, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
+    def make_eigenvector_predictons_scf(self, params, cov, x1, x2=None):
+        return make_eigenvector_predictons(params, cov, func=self.f_scf, x1=x1, x2=x2, force_positive=False)#self.polynomial=="bernstein")
 
     def get_bin_centers_interpolation(self, h, flow=True, cap=False):
         return self.get_bin_centers(h, self.name_x, self.axis_x_min, self.axis_x_max, flow=flow, cap=cap)

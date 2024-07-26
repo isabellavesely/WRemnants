@@ -2,13 +2,12 @@ import ROOT
 import hist
 import numpy as np
 import copy
-import logging
 import sys
 import decimal
 import json
 import os
 import array
-from utilities import common as common
+from utilities import common, logging
 from utilities.io_tools import input_tools
 
 import tensorflow as tf
@@ -16,7 +15,7 @@ import tensorflow as tf
 
 ROOT.gInterpreter.Declare('#include "recoil_tools.h"')
 ROOT.gInterpreter.Declare('#include "recoil_helper.h"')
-logger = logging.getLogger("wremnants").getChild(__name__.split(".")[-1])
+logger = logging.child_logger(__name__)
 
 
 def RecoilCalibrationHelper(fIn, args):

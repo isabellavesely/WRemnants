@@ -98,7 +98,7 @@ def drange(x, y, jump):
 def readBoostHist(groups, hName, procs, charge="combined", boost=False, integrateAxes=[], abcd=True, rebin=None, applySelection=True):
 
     if abcd:
-        groups.set_histselectors(procs, hName, mode="simple", smoothen=False, simultaneousABCD=False, integrate_x=False if "mt" in hName else True)
+        groups.set_histselectors(procs, hName, mode="simple", smoothing_mode="binned", simultaneousABCD=False, integrate_x=False if "mt" in hName else True)
     groups.loadHistsForDatagroups(hName, syst="", procsToRead=procs, applySelection=applySelection)
     bhist = sum([groups.groups[p].hists[hName] for p in procs])
 
