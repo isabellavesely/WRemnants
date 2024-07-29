@@ -49,6 +49,9 @@ mtw_min=40 # for Wmass (roughly half the boson mass)
 axis_fakes_pt = hist.axis.Variable(common.get_binning_fakes_pt(args.pt[1], args.pt[2]), name = "pt", underflow=False)
 axis_fakes_eta = hist.axis.Regular(int((args.eta[2]-args.eta[1])*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
 
+axis_pt = hist.axis.Regular(30, 26., 56., name = "pt", underflow=False, overflow=True)
+axis_eta = hist.axis.Regular(24, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
+
 # standard regular axes
 axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
 axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt", underflow=False, overflow=False)
@@ -87,6 +90,9 @@ axis_mT = hist.axis.Variable([0] + list(range(mtw_min, 100, 1)) + [100, 102, 104
 
 axes_mT = [axis_fakes_pt, axis_fakes_eta, common.axis_charge, axis_mT, common.axis_passIso]
 cols_mT = ["lep_pt", "lep_eta", "lep_charge", "transverseMass",  "passIso"]
+
+flipVar_pT_axes = [axis_pt, axis_eta, common.axis_charge, common.axis_passIso, common.axis_passMT]
+flipVar_pT_cols = ["lep_pt", "lep_eta", "lep_charge", "passIso",  "passMT"]
 
 # reco_mT_axes = [common.axis_recoil_reco_ptW_lowpu, common.axis_mt_lowpu, common.axis_charge, common.axis_passMT, common.axis_passIso]
 # gen_reco_mT_axes = [common.axis_recoil_gen_ptW_lowpu, common.axis_recoil_reco_ptW_lowpu, common.axis_mt_lowpu, axis_charge, common.axis_passMT, common.axis_passIso]
@@ -275,6 +281,7 @@ def build_graph(df, dataset):
 
     results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
     results.append(df.HistoBoost("transverseMass", axes_mT, [*cols_mT, "nominal_weight"]))
+    results.append(df.HistoBoost("flipVar_pT", flipVar_pT_axes, [*flipVar_pT_cols, "nominal_weight"]))
 
     if not dataset.is_data: 
         # prefire
@@ -284,7 +291,7 @@ def build_graph(df, dataset):
         # luminosity, done here as shape variation despite being a flat scaling so to facilitate propagating to fakes afterwards
         df = df.Define("luminosityScaling", f"wrem::constantScaling(nominal_weight, {args.lumiUncertainty})")
 
-        for n, c, a in (("nominal", cols, axes), ("transverseMass", cols_mT, axes_mT)):
+        for n, c, a in (("nominal", cols, axes), ("transverseMass", cols_mT, axes_mT), ("flipVar_pT", flipVar_pT_cols, flipVar_pT_axes)):
                         
             results.append(df.HistoBoost(f"{n}_prefireCorr", [*a], [*c, "prefireCorr_syst_tensor"], tensor_axes = [common.down_up_axis]))
 
