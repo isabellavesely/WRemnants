@@ -239,8 +239,11 @@ def makeStackPlotWithRatio(
             raise ValueError("Can't normalize to data without a data histogram!")
 
         vals = [x.value if hasattr(x, "value") else x for x in (data_hist.sum(), hh.sumHists(stack).sum())]
+        varis = [x.variance if hasattr(x, "variance") else x**0.5 for x in (data_hist.sum(), hh.sumHists(stack).sum())]
         scale = vals[0]/vals[1]
-        logger.info(f"Rescaling all processes by {scale:0.3f} to match data norm")
+        unc = scale*(varis[0]/vals[0]**2 + varis[1]/vals[1]**2)**0.5
+        ndigits = -math.floor(math.log10(abs(unc))) + 1
+        logger.info(f"Rescaling all processes by {round(scale,ndigits)} +/- {round(unc,ndigits)} to match data norm")
         stack = [s*scale for s in stack]
 
     hep.histplot(

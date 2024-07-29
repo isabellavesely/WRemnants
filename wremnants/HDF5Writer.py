@@ -176,7 +176,7 @@ class HDF5Writer(object):
                 axes = chanInfo.fit_axes[:]
                 nbinschan = None
 
-            # load data and nominal ans syst histograms
+            # load data and nominal and syst histograms
             dg.loadHistsForDatagroups(
                 baseName=chanInfo.nominalName, syst=chanInfo.nominalName,
                 procsToRead=dg.groups.keys(),
@@ -691,6 +691,7 @@ class HDF5Writer(object):
         kstat = np.square(sumw)/sumw2
         #numerical protection to avoid poorly defined constraint
         kstat = np.where(np.equal(sumw,0.), 1., kstat)
+        kstat = np.where(np.equal(sumw2,0.), 1., kstat)
 
         #write results to hdf5 file
         procSize = nproc*np.dtype(self.dtype).itemsize

@@ -77,8 +77,11 @@ def select_good_muons(df, ptLow, ptHigh, datasetGroup, nMuons=1, use_trackerMuon
         # medium ID added afterwards
         df = select_good_secondary_vertices(df)
         # match by index
-        df = df.Define("Muon_goodSV", "ROOT::VecOps::Take(goodSV, Muon_svIdx, 0)")
-        goodMuonsSelection += " && Muon_sip3d > 4.0 && Muon_goodSV"
+        # FIXME: result is not as expected, somthing might be wrong here (either in nanoAOD or in accessing it) disabled for now
+        # df = df.Define("Muon_goodSV", "ROOT::VecOps::Take(goodSV, Muon_svIdx, 0)")
+        # goodMuonsSelection += " && Muon_sip3d > 4.0 && Muon_goodSV"
+
+        goodMuonsSelection += " && Muon_sip3d > 4.0 && wrem::hasMatchDR2(Muon_correctedEta,Muon_correctedPhi,SV_eta[goodSV],SV_phi[goodSV], 0.01)"
 
     if nonPromptFromLighMesonDecay:
         # looseID should be part of veto, but just in case, the global condition should also already exist

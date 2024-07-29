@@ -11,6 +11,8 @@ import itertools
 
 from narf import ioutils
 
+import scipy.stats
+
 from utilities import common, logging, differential, boostHistHelpers as hh
 from utilities.styles import styles
 from wremnants import plot_tools
@@ -170,6 +172,7 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
     scale = max(1, np.divide(*ax1.get_figure().get_size_inches())*0.3)
 
     if chi2 is not None:
+        p_val = round(scipy.stats.chi2.sf(chi2[0], chi2[1])*100,1)
         if saturated_chi2:
             chi2_name = "\chi_{\mathrm{sat.}}^2/ndf"
         else:
@@ -177,10 +180,10 @@ def make_plot(h_data, h_inclusive, h_stack, axes, colors=None, labels=None, suff
         if len(h_data.values())<100:
             plt.text(0.05, 0.94, f"${chi2_name}$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
                 fontsize=20*args.scaleleg*scale)  
-            plt.text(0.05, 0.86, f"$= {round(chi2[0],1)}/{chi2[1]}$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
+            plt.text(0.05, 0.86, f"$= {round(chi2[0],1)}/{chi2[1]} (p={p_val}\%)$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
                 fontsize=20*args.scaleleg*scale)  
         else:
-            plt.text(0.05, 0.94, f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]}$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
+            plt.text(0.05, 0.94, f"${chi2_name} = {round(chi2[0],1)}/{chi2[1]} (p={p_val}\%)$", horizontalalignment='left', verticalalignment='top', transform=ax1.transAxes,
                 fontsize=20*args.scaleleg*scale)
 
     plot_tools.redo_axis_ticks(ax1, "x")

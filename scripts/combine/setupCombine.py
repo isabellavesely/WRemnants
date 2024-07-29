@@ -83,7 +83,8 @@ def make_parser(parser=None):
     parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["closure", "simple", "extrapolate", "extended1D", "extended2D"])
     parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "full"], help="Smoothing mode for fake estimate.")
     parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
-    parser.add_argument("--smoothingOrderFakerate", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate ")
+    parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
+    parser.add_argument("--fakeSmoothingOrder", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate or full prediction, depending on the smoothing mode")
     parser.add_argument("--simultaneousABCD", action="store_true", help="Produce datacard for simultaneous fit of ABCD regions")
     parser.add_argument("--skipSumGroups", action="store_true", help="Don't add sum groups to the output to save time e.g. when computing impacts")
     parser.add_argument("--allowNegativeExpectation", action="store_true", help="Allow processes to have negative contributions")
@@ -284,10 +285,13 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
     if wmass and not xnorm:
         datagroups.fakerate_axes=args.fakerateAxes
-        datagroups.set_histselectors(datagroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-                                     smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.smoothingOrderFakerate,
-                                     integrate_x="mt" not in fitvar,
-                                     simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
+        datagroups.set_histselectors(
+            datagroups.getNames(), inputBaseName, mode=args.fakeEstimation,
+            smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+            mcCorr=args.fakeMCCorr,
+            integrate_x="mt" not in fitvar,
+            simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
+            )
 
     # Start to create the CardTool object, customizing everything
     cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
@@ -360,10 +364,13 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
 
             if wmass and not xnorm:
                 pseudodataGroups.fakerate_axes=args.fakerateAxes
-                pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-                smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.smoothingOrderFakerate,
-                integrate_x="mt" not in fitvar,
-                simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
+                pseudodataGroups.set_histselectors(
+                    pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation,
+                    smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+                    mcCorr=args.fakeMCCorr,
+                    integrate_x="mt" not in fitvar,
+                    simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
+                )
 
             cardTool.setPseudodataDatagroups(pseudodataGroups)
     if args.pseudoDataFakes:
@@ -374,9 +381,11 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, filterGroups=filterGroupFakes)
             pseudodataGroups.fakerate_axes=args.fakerateAxes
             pseudodataGroups.copyGroup("QCD", "QCDTruth")
-            pseudodataGroups.set_histselectors(pseudodataGroups.getNames(), inputBaseName, 
-                mode=args.fakeEstimation, fake_processes=["QCD",], smoothing_mode=args.fakeSmoothingMode,
-                simultaneousABCD=simultaneousABCD, 
+            pseudodataGroups.set_histselectors(
+                pseudodataGroups.getNames(), inputBaseName, mode=args.fakeEstimation, fake_processes=["QCD",],
+                smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+                mcCorr=args.fakeMCCorr,
+                simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
                 )
         else:
             pseudodataGroups = Datagroups(args.pseudoDataFile if args.pseudoDataFile else inputFile, excludeGroups=excludeGroup, filterGroups=filterGroup)

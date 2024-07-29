@@ -761,6 +761,7 @@ class CardTool(object):
 
         # now load the nominal histograms
         # only load nominal histograms that are not already loaded
+        procDictFromNomi = self.datagroups.getDatagroups()
         processesFromNomiToLoad = [proc for proc in self.datagroups.groups.keys() if self.nominalName not in procDictFromNomi[proc].hists]
         if len(processesFromNomiToLoad):
             self.datagroups.loadHistsForDatagroups(
@@ -770,7 +771,6 @@ class CardTool(object):
                 lumiScaleVarianceLinearly=self.lumiScaleVarianceLinearly,
                 forceNonzero=forceNonzero,
                 sumFakesPartial=not self.simultaneousABCD)
-        procDictFromNomi = self.datagroups.getDatagroups()
 
         if "QCD" not in procDict:
             # use truth MC as QCD

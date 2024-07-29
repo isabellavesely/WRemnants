@@ -44,8 +44,9 @@ parser.add_argument("--presel", type=str, nargs="*", default=[], help="Specify c
 parser.add_argument("--normToData", action='store_true', help="Normalize MC to data")
 parser.add_argument("--fakeEstimation", type=str, help="Set the mode for the fake estimation", default="extended1D", choices=["simple", "extrapolate", "extended1D", "extended2D"])
 parser.add_argument("--fakeSmoothingMode", type=str, default="full", choices=["binned", "fakerate", "full"], help="Smoothing mode for fake estimate.")
+parser.add_argument("--fakeMCCorr", type=str, default=[None], nargs="*", choices=["none", "pt", "eta", "mt"], help="axes to apply nonclosure correction from QCD MC. Leave empty for inclusive correction, use'none' for no correction")
 parser.add_argument("--forceGlobalScaleFakes", default=None, type=float, help="Scale the fakes  by this factor (overriding any custom one implemented in datagroups.py in the fakeSelector).")
-parser.add_argument("--smoothingOrderFakerate", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate ")
+parser.add_argument("--fakeSmoothingOrder", type=int, default=2, help="Order of the polynomial for the smoothing of the fake rate or full prediction, depending on the smoothing mode")
 parser.add_argument("--fakerateAxes", nargs="+", help="Axes for the fakerate binning", default=["eta","pt","charge"])
 parser.add_argument("--fineGroups", action='store_true', help="Plot each group as a separate process, otherwise combine groups based on predefined dictionary")
 
@@ -132,7 +133,16 @@ else:
 
 groups.fakerate_axes=args.fakerateAxes
 if applySelection:
-    groups.set_histselectors(datasets, args.baseName, smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.smoothingOrderFakerate, integrate_x=all("mt" not in x.split("-") for x in args.hists), mode=args.fakeEstimation, forceGlobalScaleFakes=args.forceGlobalScaleFakes)
+    groups.set_histselectors(
+        datasets,
+        args.baseName,
+        smoothing_mode=args.fakeSmoothingMode,
+        smoothingOrderFakerate=args.fakeSmoothingOrder,
+        integrate_x=all("mt" not in x.split("-") for x in args.hists),
+        mode=args.fakeEstimation,
+        forceGlobalScaleFakes=args.forceGlobalScaleFakes,
+        mcCorr=args.fakeMCCorr,
+        )
 
 if not args.nominalRef:
     nominalName = args.baseName.rsplit("_", 1)[0]

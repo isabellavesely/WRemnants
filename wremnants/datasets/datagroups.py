@@ -195,8 +195,18 @@ class Datagroups(object):
         if len(self.groups) == 0:
             logger.warning(f"Excluded all groups using '{excludes}'. Continue without any group.")
 
-    def set_histselectors(self, 
-                          group_names, histToRead="nominal", fake_processes=None, mode="extended1D", smoothing_mode="full", smoothingOrderFakerate=2, simultaneousABCD=False, forceGlobalScaleFakes=None, **kwargs
+    def set_histselectors(
+        self,
+        group_names,
+        histToRead="nominal",
+        fake_processes=None,
+        mode="extended1D",
+        smoothing_mode="full",
+        smoothingOrderFakerate=2,
+        simultaneousABCD=False,
+        forceGlobalScaleFakes=None,
+        mcCorr=["pt","eta"],
+        **kwargs
     ):
         logger.info(f"Set histselector")
         if self.mode[0] != "w":
@@ -231,7 +241,24 @@ class Datagroups(object):
             base_member = members[0].name
             h = self.results[base_member]["output"][histToRead].get()
             if g in fake_processes:
-                self.groups[g].histselector = fakeselector(h[{"charge": hist.sum}], global_scalefactor=scale, fakerate_axes=self.fakerate_axes, smoothing_mode=smoothing_mode, smoothing_order_fakerate=smoothingOrderFakerate, **auxiliary_info, **kwargs)
+                self.groups[g].histselector = fakeselector(
+                    h[{"charge": hist.sum}],
+                    global_scalefactor=scale,
+                    fakerate_axes=self.fakerate_axes,
+                    smoothing_mode=smoothing_mode,
+                    smoothing_order_fakerate=smoothingOrderFakerate,
+                    **auxiliary_info, **kwargs
+                    )
+                if mode in ["simple", "extended1D", "extended2D"] and forceGlobalScaleFakes is None and (len(mcCorr)==0 or mcCorr[0] not in ["none", None]):
+                    # set QCD MC nonclosure corrections
+                    if "QCDmuEnrichPt15PostVFP" not in self.results:
+                        logger.warning("Dataset 'QCDmuEnrichPt15PostVFP' not in results, continue without fake correction")
+                        return
+                    if "unweighted" not in self.results["QCDmuEnrichPt15PostVFP"]["output"]:
+                        logger.warning("Histogram 'unweighted' not found, continue without fake correction")
+                        return
+                    hQCD = self.results["QCDmuEnrichPt15PostVFP"]["output"]["unweighted"].get()
+                    self.groups[g].histselector.set_correction(hQCD, axes_names=mcCorr)
             else:
                 self.groups[g].histselector = signalselector(h[{"charge": hist.sum}], fakerate_axes=self.fakerate_axes, **kwargs)
 

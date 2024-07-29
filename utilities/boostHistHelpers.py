@@ -338,7 +338,12 @@ def makeAbsHist(h, axis_name, rename=True):
 
     if 0 not in ax.edges:
         raise ValueError("Can't mirror around 0 if it isn't a bin boundary")
-    abs_ax = hist.axis.Variable(ax.edges[ax.index(0.):], **axInfo)
+    new_edges = ax.edges[ax.index(0.):]
+    if isinstance(ax, hist.axis.Regular):
+        abs_ax = hist.axis.Regular(len(new_edges)-1, 0, new_edges[-1], **axInfo)
+    else:
+        abs_ax = hist.axis.Variable(new_edges, **axInfo)
+
     hnew = hist.Hist(*h.axes[:axidx], abs_ax, *h.axes[axidx+1:], storage=h.storage_type())
     
     s = hist.tag.Slicer()
@@ -372,6 +377,25 @@ def rebinHistMultiAx(h, axes, edges=[], lows=[], highs=[]):
             logger.info(f"Rebinning the axis '{ax}' by [{rebin}]")
             sel[ax] = slice(None,None,hist.rebin(rebin))
     return h[sel] if len(sel)>0 else h        
+
+def mirrorAxis(h, axis, flow=True):
+    # mirror an axis by projecting the entries to the absolute value of the axis and copy it 
+    htmp = makeAbsHist(h, axis, rename=False)
+    idx = htmp.axes.name.index(axis)
+    vals = htmp.values(flow=flow)
+    varis = htmp.variances(flow=flow)
+    vals_flip = np.flip(vals, axis=idx)
+    varis_flip = np.flip(varis, axis=idx)
+    vals = np.concatenate((vals_flip, vals), axis=idx)
+    varis = np.concatenate((varis_flip, varis), axis=idx)
+    h.values(flow=flow)[...] = vals/2.
+    h.variances(flow=flow)[...] = varis/4.
+    return h
+
+def mirrorAxes(h, axes, flow=True):
+    for a in axes:
+        h = mirrorAxis(h, a, flow=flow)
+    return h
 
 def disableFlow(h, axis_name):
     # disable the overflow and underflow bins of a single axes, while keeping the flow bins of other axes
