@@ -50,8 +50,10 @@ axis_fakes_pt = hist.axis.Variable(common.get_binning_fakes_pt(args.pt[1], args.
 axis_fakes_eta = hist.axis.Regular(int((args.eta[2]-args.eta[1])*10/2), args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
 
 # standard regular axes
-axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
-axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt", underflow=False, overflow=False)
+axis_pt = hist.axis.Regular(30, 26., 56., name = "pt", underflow=False, overflow=True)
+axis_eta = hist.axis.Regular(24, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
+# axis_eta = hist.axis.Regular(args.eta[0], args.eta[1], args.eta[2], name = "eta", underflow=False, overflow=False)
+# axis_pt = hist.axis.Regular(args.pt[0], args.pt[1], args.pt[2], name = "pt", underflow=False, overflow=False)
 axis_phi = hist.axis.Regular(50, -math.pi, math.pi, name = "phi", circular = True)
 axis_iso = hist.axis.Regular(50, 0, 1, underflow=False, overflow=True, name = "iso")
 
