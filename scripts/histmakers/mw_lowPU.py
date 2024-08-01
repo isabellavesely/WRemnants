@@ -61,7 +61,10 @@ axis_fakes_eta = hist.axis.Regular(4, -2.4, 2.4, name = "eta", underflow=False, 
 
 # standard regular axes
 axis_eta = hist.axis.Regular(24, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
-axis_pt = hist.axis.Regular(56-lep_pt_min, lep_pt_min, 56, name = "pt", underflow=False, overflow=True)
+axis_pt = hist.axis.Regular(30, 26., 56., name = "pt", underflow=False, overflow=True)
+# axis_eta = hist.axis.Regular(24, -2.4, 2.4, name = "eta", underflow=False, overflow=False)
+# axis_pt = hist.axis.Regular(56-lep_pt_min, lep_pt_min, 56, name = "pt", underflow=False, overflow=True)
+
 axis_phi = hist.axis.Regular(50, -math.pi, math.pi, name = "phi", circular = True)
 axis_iso = hist.axis.Regular(50, 0, 1, underflow=False, overflow=True, name = "iso")
 axis_ptW = hist.axis.Variable([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 30, 40, 50, 60, 75, 90, 150], name = "ptW", underflow=False, overflow=True)
@@ -95,6 +98,9 @@ cols_mt = ["lep_pt", "lep_eta", "lep_charge", "transverseMass", "passIso"]
 axes_fakerate = [axis_fakes_pt, axis_fakes_eta, common.axis_charge, common.axis_passIso, axis_mt] ## was axis_mt
 columns_fakerate = ["lep_pt", "lep_eta", "lep_charge", "passIso", "transverseMass"] ## was transverseMass
 
+#axes for pt-eta-charge analysis
+flipVar_pT_axes = [axis_pt, axis_eta, common.axis_charge, common.axis_passIso, common.axis_passMT]
+flipVar_pT_cols = ["lep_pt", "lep_eta", "lep_charge", "passIso",  "passMT"]
 
 # extra axes which can be used to label tensor_axes
 theory_corrs = [*args.theoryCorr, *args.ewTheoryCorr]
@@ -271,6 +277,7 @@ def build_graph(df, dataset):
 
     results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
     results.append(df.HistoBoost("transverseMass", axes_mt, [*cols_mt, "nominal_weight"]))
+    results.append(df.HistoBoost("flipVar_pT", flipVar_pT_axes, [*flipVar_pT_cols, "nominal_weight"]))
 
     if not dataset.is_data: 
         # prefire
@@ -280,7 +287,7 @@ def build_graph(df, dataset):
         # luminosity, done here as shape variation despite being a flat scaling so to facilitate propagating to fakes afterwards
         df = df.Define("luminosityScaling", f"wrem::constantScaling(nominal_weight, {args.lumiUncertainty})")
 
-        for n, c, a in (("nominal", cols, axes), ("transverseMass", cols_mt, axes_mt)):
+        for n, c, a in (("nominal", cols, axes), ("transverseMass", cols_mT, axes_mT), ("flipVar_pT", flipVar_pT_cols, flipVar_pT_axes)):
             results.append(df.HistoBoost(f"{n}_prefireCorr", [*a], [*c, "prefireCorr_syst_tensor"], tensor_axes = [common.down_up_axis]))
 
             if dataset.name in common.vprocs_lowpu:
