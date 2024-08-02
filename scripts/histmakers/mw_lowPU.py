@@ -277,7 +277,7 @@ def build_graph(df, dataset):
 
     results.append(df.HistoBoost("nominal", axes, [*cols, "nominal_weight"]))
     results.append(df.HistoBoost("transverseMass", axes_mt, [*cols_mt, "nominal_weight"]))
-    results.append(df.HistoBoost("flipVar_pT", flipVar_pT_axes, [*flipVar_pT_cols, "nominal_weight"]))
+    results.append(df.HistoBoost("flipVarPT", flipVar_pT_axes, [*flipVar_pT_cols, "nominal_weight"]))
 
     if not dataset.is_data: 
         # prefire
@@ -287,7 +287,7 @@ def build_graph(df, dataset):
         # luminosity, done here as shape variation despite being a flat scaling so to facilitate propagating to fakes afterwards
         df = df.Define("luminosityScaling", f"wrem::constantScaling(nominal_weight, {args.lumiUncertainty})")
 
-        for n, c, a in (("nominal", cols, axes), ("transverseMass", cols_mt, axes_mt), ("flipVar_pT", flipVar_pT_cols, flipVar_pT_axes)):
+        for n, c, a in (("nominal", cols, axes), ("transverseMass", cols_mt, axes_mt), ("flipVarPT", flipVar_pT_cols, flipVar_pT_axes)):
             results.append(df.HistoBoost(f"{n}_prefireCorr", [*a], [*c, "prefireCorr_syst_tensor"], tensor_axes = [common.down_up_axis]))
 
             if dataset.name in common.vprocs_lowpu:
