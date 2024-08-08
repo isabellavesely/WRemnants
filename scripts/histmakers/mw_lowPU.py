@@ -208,7 +208,7 @@ def build_graph(df, dataset):
 
     df = df.Define("trigMatch", "wrem::hasTriggerMatchLowPU(Lep_eta, Lep_phi, TrigObj_eta[goodTrigObjs], TrigObj_phi[goodTrigObjs])")
     df = df.Define("nonTrigMatch", "wrem::inverse(trigMatch)")
-    df = df.Filter("Sum(trigMatch) > 0")
+    # df = df.Filter("Sum(trigMatch) > 0")
 
     df = df.Define("lep_pt_uncorr", "Lep_pt_uncorr[0]")
     df = df.Define("lep_pt", "Lep_pt[0]")

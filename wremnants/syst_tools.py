@@ -991,7 +991,7 @@ def add_theory_hists(results, df, args, dataset_name, corr_helpers, qcdScaleByHe
         if qcdScaleByHelicity_helper is not None:
             add_qcdScaleByHelicityUnc_hist(results, df, qcdScaleByHelicity_helper, scale_axes, scale_cols, **info)
 
-        if "MEParamWeight" not in df.GetColumnNames():
+        if "MEParamWeight" not in df.GetColumnNames() and "LHEReweightingWeight" not in df.GetColumnNames():
             return df
         # TODO: Should have consistent order here with the scetlib correction function
         add_massweights_hist(results, df, axes, cols, proc=dataset_name, **info)
