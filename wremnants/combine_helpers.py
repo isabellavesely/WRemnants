@@ -80,7 +80,7 @@ def add_mass_diff_variations(
         )
 
 
-def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="highPU", flavor="", group_compact=True):
+def add_recoil_uncertainty(card_tool, samples, lumiScale, passSystToFakes=False, pu_type="highPU", flavor="", group_compact=True):
     met = input_tools.args_from_metadata(card_tool, "met")
     if flavor == "":
         flavor = input_tools.args_from_metadata(card_tool, "flavor")
@@ -103,6 +103,7 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
             splitGroup={"experiment": f".*"},
             systAxes = ["recoil_unc"],
             passToFakes=passSystToFakes,
+            scale = 1/np.sqrt(lumiScale),
         )
 
         card_tool.addSystematic("recoil_stat",
@@ -112,6 +113,7 @@ def add_recoil_uncertainty(card_tool, samples, passSystToFakes=False, pu_type="h
             splitGroup={"experiment": f".*"},
             systAxes = ["recoil_unc"],
             passToFakes=passSystToFakes,
+            scale = 1/np.sqrt(lumiScale),
         )
 
 

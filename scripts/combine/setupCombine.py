@@ -285,15 +285,15 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
     if args.qcdProcessName:
         datagroups.fakeName = args.qcdProcessName
 
-    if wmass and not xnorm:
-        datagroups.fakerate_axes=args.fakerateAxes
-        datagroups.set_histselectors(
-            datagroups.getNames(), inputBaseName, mode=args.fakeEstimation,
-            smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
-            mcCorr=args.fakeMCCorr,
-            integrate_x="mt" not in fitvar,
-            simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
-            )
+    # if wmass and not xnorm:
+    #     datagroups.fakerate_axes=args.fakerateAxes
+    #     datagroups.set_histselectors(
+    #         datagroups.getNames(), inputBaseName, mode=args.fakeEstimation,
+    #         smoothing_mode=args.fakeSmoothingMode, smoothingOrderFakerate=args.fakeSmoothingOrder,
+    #         mcCorr=args.fakeMCCorr,
+    #         integrate_x="mt" not in fitvar,
+    #         simultaneousABCD=simultaneousABCD, forceGlobalScaleFakes=args.forceGlobalScaleFakes,
+    #         )
 
     # Start to create the CardTool object, customizing everything
     cardTool = CardTool.CardTool(xnorm=xnorm, simultaneousABCD=simultaneousABCD, real_data=args.realData)
@@ -917,7 +917,7 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
                 )
 
     if (wmass or wlike) and input_tools.args_from_metadata(cardTool, "recoilUnc"):
-        combine_helpers.add_recoil_uncertainty(cardTool, ["signal_samples"],
+        combine_helpers.add_recoil_uncertainty(cardTool, ["signal_samples"], inputLumiScale,
             passSystToFakes=passSystToFakes,
             flavor=datagroups.flavor if datagroups.flavor else "mu",
             pu_type="lowPU" if lowPU else "highPU")
