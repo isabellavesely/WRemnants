@@ -22,7 +22,7 @@ env:
   OUTFILE_WMASS: "mw_with_mu_eta_pt_unfolding.hdf5"
   OUTFILE_WLIKE: "mz_wlike_with_mu_eta_pt_unfolding.hdf5"
   OUTFILE_DILEPTON: "mz_dilepton_unfolding.hdf5"
-  DATAPATH: "root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/"
+  DATAPATH: "/scratch/shared/NanoAOD/"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:

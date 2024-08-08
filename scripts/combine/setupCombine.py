@@ -135,7 +135,7 @@ def make_parser(parser=None):
     parser.add_argument("--addTauToSignal", action='store_true', help="Events from the same process but from tau final states are added to the signal")
     parser.add_argument("--noPDFandQCDtheorySystOnSignal", action='store_true', help="Removes PDF and theory uncertainties on signal processes")
     parser.add_argument("--recoCharge", type=str, default=["plus", "minus"], nargs="+", choices=["plus", "minus"], help="Specify reco charge to use, default uses both. This is a workaround for unfolding/theory-agnostic fit when running a single reco charge, as gen bins with opposite gen charge have to be filtered out")
-    parser.add_argument("--forceConstrainMass", action='store_true', help="force mass to be constrained in fit")
+    parser.add_argument("--massConstraintMode", choices=["automatic", "constrained", "unconstrained"], default="automatic", help="Whether mass is constrained within PDG value and uncertainty or unconstrained in the fit")
     parser.add_argument("--decorMassWidth", action='store_true', help="remove width variations from mass variations")
     parser.add_argument("--muRmuFPolVar", action="store_true", help="Use polynomial variations (like in theoryAgnosticPolVar) instead of binned variations for muR and muF (of course in setupCombine these are still constrained nuisances)")
     parser.add_argument("--binByBinStatScaleForMW", type=float, default=1.125, help="scaling of bin by bin statistical uncertainty for W mass analysis")
@@ -188,7 +188,11 @@ def setup(args, inputFile, inputBaseName, inputLumiScale, fitvar, genvar=None, x
         wmass = hasw
 
     simultaneousABCD = wmass and args.simultaneousABCD and not xnorm
-    constrainMass = args.forceConstrainMass or args.fitXsec or (dilepton and not "mll" in fitvar) or genfit
+
+    if args.massConstraintMode == "automatic":
+        constrainMass = args.fitXsec or (dilepton and not "mll" in fitvar) or genfit
+    else:
+        constrainMass = True if args.massConstraintMode == "constrained" else False
     logger.debug(f"constrainMass = {constrainMass}")
 
     if wmass:

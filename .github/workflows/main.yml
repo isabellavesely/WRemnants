@@ -27,8 +27,8 @@ env:
   OUTFILE_LOWPU_MU: "mw_lowPU_mu.hdf5"
   OUTFILE_LOWPU_EE: "mz_lowPU_ee.hdf5"
   OUTFILE_LOWPU_MUMU: "mz_lowPU_mumu.hdf5"
-  DATAPATH: "root://eoscms.cern.ch//store/cmst3/group/wmass/w-mass-13TeV/NanoAOD/"
-  DATAPATH_LOWPU: "root://eoscms.cern.ch//store/cmst3/group/wmass/LowPU/"
+  DATAPATH: "/scratch/shared/NanoAOD/"
+  DATAPATH_LOWPU: "/scratch/shared/NanoAOD/LowPU/"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -641,7 +641,7 @@ jobs:
           -o $WREMNANTS_OUTDIR -j $NTHREADS --maxFiles $MAX_FILES --axes ptll yll --forceDefaultName
 
       - name: dilepton combine ptll setup
-        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE -o $WREMNANTS_OUTDIR
+        run: scripts/ci/run_with_singularity.sh scripts/ci/setup_and_run_python.sh scripts/combine/setupCombine.py -i $HIST_FILE --fitvar ptll-yll --lumiScale $LUMI_SCALE --realData -o $WREMNANTS_OUTDIR
 
       - name: dilepton combine ptll fit
         run: cmssw-cc7 --command-to-run scripts/ci/run_combine.sh /home/c/cmsmwbot/combinetf/CMSSW_10_6_30/src/ dilepton $WREMNANTS_OUTDIR/ZMassDilepton_ptll_yll ZMassDilepton.hdf5
