@@ -735,6 +735,13 @@ private:
     idxs_type idxs_;
 };
 
+double reweight_poisson(int ref_lambda, int target_lambda, int k) {
+    double ref_prob = ROOT::Math::poisson_pdf(k, ref_lambda);
+    double target_prob = ROOT::Math::poisson_pdf(k, target_lambda);
+
+    return target_prob/ref_prob;
+}
+
 enum class TriggerCat { nonTriggering = 0, triggering = 1 };
 
 std::vector<int> seq_idxs(const int size, const int start = 0) {

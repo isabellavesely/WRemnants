@@ -1247,6 +1247,11 @@ if __name__ == "__main__":
 
         if len(outnames) == 1:
             outfolder, outfile = outnames[0]
+            outfile += "2017_Wminus"
+            # logger.info(f"inputFile is: {args.inputFile}, and 0th index at {str(args.inputFile[0])}")
+            # puave_index = (str(args.inputFile[0])).find("PUAVE")
+            # logger.info(str(puave_index))
+            # outfile += f"_{str(args.inputFile[0])[puave_index:-5]}"
         else:
             dir_append = '_'.join(['', *filter(lambda x: x, ['statOnly' if args.doStatOnly else '', args.postfix])])
             unique_names = list(dict.fromkeys([o[1] for o in outnames]))

@@ -9,6 +9,8 @@ parser,initargs = common.common_parser(analysis_label)
 parser.add_argument("--lumiUncertainty", type=float, help="Uncertainty for luminosity in excess to 1 (e.g. 1.017 means 1.7\%)", default=1.017)
 parser.add_argument("--noGenMatchMC", action='store_true', help="Don't use gen match filter for prompt muons with MC samples (note: QCD MC never has it anyway)")
 parser.add_argument("--flavor", type=str, choices=["e", "mu"], help="Flavor (e or mu)", default="mu")
+parser.add_argument("--targetMu", type=int, default=4, help="Target average pileup")
+parser.add_argument("--onlyWminus", action='store_true')
 
 parser = common.set_parser_default(parser, "pt", [34, 25, 1000])
 parser = common.set_parser_default(parser, "met", "RawPFMET")
@@ -31,10 +33,16 @@ import wremnants.lowpu as lowpu
 ###################################
 flavor = args.flavor # mu, e
 if flavor == "mu":
-    sigProcs = ["Wminusmunu", "Wplusmunu"]
+    if args.onlyWminus:
+        sigProcs = ["Wminusmunu"]
+    else:
+        sigProcs = ["Wminusmunu", "Wplusmunu"]
     base_group = "Wmunu"
 else:
-    sigProcs = ["Wminusenu", "Wplusenu"]
+    if args.onlyWminus:
+        sigProcs = ["Wminusenu"]
+    else:
+        sigProcs = ["Wminusenu", "Wplusenu"]
     base_group = "Wenu"
 
 datasets = getDatasets(maxFiles=args.maxFiles,
@@ -234,7 +242,8 @@ def build_graph(df, dataset):
             df = df.Define("prefireCorr", "wrem::prefireCorr(0, Jet_pt, Jet_eta, Jet_phi, Jet_muEF, Jet_neEmEF, Jet_chEmEF, Photon_pt, Photon_eta, Photon_phi, Lep_pt, Lep_eta, Lep_phi)")
             df = df.Define("SFMC", "lepSF_IDISO*lepSF_HLT*prefireCorr")
 
-        df = df.Define("exp_weight", "SFMC")
+        # df = df.Define("exp_weight", "SFMC")
+        df = df.Define("exp_weight", f"wrem::reweight_poisson(Pileup_nTrueInt, {args.targetMu}, Pileup_nPU)")
         df = theory_tools.define_theory_weights_and_corrs(df, dataset.name, corr_helpers, args)
     else:
         df = df.DefinePerSample("nominal_weight", "1.0")
